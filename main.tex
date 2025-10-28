@@ -1,0 +1,198 @@
+\documentclass[12pt,a4paper]{article}
+
+% Packages
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lipsum} % for dummy text
+\usepackage[english]{babel}
+\usepackage{csquotes}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{hyperref}
+
+\usepackage{algorithm,algpseudocode}
+
+
+% Bibliography setup
+\usepackage[backend=biber,style=ieee,uniquename=init]{biblatex}
+\addbibresource{reference/PnP.bib} % name of your .bib file (explicit path so biber finds it when building from workspace root)
+\addbibresource{reference/optimisation.bib}
+
+% Define custom cite command
+\DeclareCiteCommand{\authoryearcite}
+  {\usebibmacro{prenote}}
+  {
+   \printtext[bibhyperref]{\printnames{labelname}}\space(%
+   \printfield{year})}
+  {\multicitedelim}
+  {\usebibmacro{postnote}}
+
+
+\title{PhD Bibliography : Optimization of learning-based methods without ground truth and applicability to positron emision tomography}
+\author{Sacha Bouchez-Delotte}
+\date{\today}
+
+\begin{document}
+
+
+
+\maketitle
+
+\newpage
+\tableofcontents
+\newpage
+
+\begin{abstract}
+This doctoral project aims at proposing new statistical learning based methods to solve linear inverse problems, and more specifically image reconstruction. The focus will be laid on the possibility to perform the training stage without ground truth images, provided that suited sets of noisy data are available, as pioneered by the authors of Noise2noise. A second step of the project will be to consider Positron Emission Tomography (PET) imaging as a specific application case, in collaboration with Nantes CHU. In this context, list mode data can be split into statistically independent subsets in many ways, which could yield a tailored version of Noise2noise with enhanced properties.
+\end{abstract}
+
+\newpage
+
+\section{Context}
+
+Producing large databases of ground truth images is however challenging in many
+scientific areas, especially medical imaging.
+In the medical field, producing high-quality images can be time-consuming and can put the patient at risk (e.g. injecting higher radiotracer doses into the patient as for nuclear imaging).
+Getting high-quality images is therefore impossible and learning methods must be carried out without ground truth.
+Fortunately, Image restoration, ranging from image denoising to image reconstruction \
+based on deep learning without ground truth is an intense field of research;
+there are a lot of unsupervised methods to tackle this data limitation that we are going to review.
+
+\subsection{Linear inverse problems}
+
+We are going to study a specific class of problems which is inverse problems. These problems aim to recover a signal $x \in \mathbb{R}^n$, transformed by a direct forward operation
+$\mathcal{A}$, given a measurement $y \in \mathbb{R}^d$:
+
+\begin{equation}
+    y = \mathcal{A}x
+\end{equation}
+
+An inverse problem is assumed to be well-posed if it satisfies the following three properties.
+\begin{enumerate}
+    \item Existence. $\forall y, \exists x$ such as $y = \mathcal{A}x$.
+    \item Uniquenness. $\forall y, \exists! x$, such as $y = \mathcal{A}x$.
+    \item Stability. $\mathcal{A}^{-1}$ is continuous.
+\end{enumerate}
+
+In our situation, the inverse problem is ill-posed, meaning that the one of the above properties is not satisfied.
+To tackle this issue, one may consider regularizing the problem by adding prior knowledge on the solution.
+In the context of image reconstruction, the forward operator $\mathcal{A}$ is often linear, and the measurements are corrupted by noise.
+The linear inverse problem can then be written as:
+
+\begin{equation}
+    y = Ax + \epsilon
+\end{equation}
+
+with $A \in \mathbb{R}^{d \times n}$ the linear forward operator and $\epsilon \in \mathbb{R}^d$ the noise with prior distribution $p_{\epsilon}$.
+
+\newpage
+\section{Plug-and-play methods and Regularization by denoising}
+
+\subsection{Maximum a Posteriori}
+A classical approach is to formalize this problem through the \textit{Maximum a Posteriori} estimation while balancing a data fidelity term and a regularizing term. Baye's rule gives $p(x|y) = \frac{p(y|x)p(x)}{p(y)}$, where $p(y|x)$ is the likelihood, $p(x)$ the prior and $p(y)$ the evidence. The MAP estimator is given by:
+
+\begin{equation}
+    \hat{x} = \arg \max_x p(x|y) = \arg \max_x p(y|x)p(x)
+\end{equation}
+
+Taking the negative logarithm, we obtain the following minimization problem:
+\begin{equation}
+    \hat{x} = \arg \min_x f(x, y) - \lambda s(x)
+\end{equation}
+
+where $-\ln p(x) = s(x) + C$ and under the likelihood  $p(y | x) \propto \exp(f(x, y))$, where $f(x)$ is the data fidelity term and $\lambda$ is a hyperparameter balancing the two terms.
+
+\paragraph{Regularization}
+This term defines how much the reconstruction process must rely on the chosen prior knowledge. We will refer to it as regularizing from now on.
+This optimisation is however challenging in practive as the score $-\nabla \ln p(x)$ is often ill-conditioned and $f$ is not convex enough.
+Thus, choosing prior knowledge and tuning the balancing term are crucial to solve such ill-posed inverse problems.
+Among the most naïve regularization strategies, we can cite the Total Variation or thiknonov regularization, respectively defined as :
+
+\begin{equation}
+    s_{TV}(x) = \|\nabla x\|_1
+\end{equation} 
+\begin{equation}
+    s_{Tikhonov}(x) = \|\Gamma x\|_2^2
+\end{equation}
+
+\paragraph{Iterative algorithms} There is a wide range of iterative algorithms to find good MAP estimators. We can mention the Forward-Backward Splitting algorithm which consists of two steps within each iteration : we first perform the gradient descent on data fidelity term $f(x, y)$ before estimating the proximal of the chosen regularizer $s(x)$ (see \ref{alg:pnp-fbs}).
+
+Then the Alternating Direction Method of Multipliers (ADMM) \cite{boyd_distributed_2010} is another popular algorithm which consists in splitting the optimization problem into two sub-problems, one for each term of the MAP objective, and iteratively solving them while enforcing consistency between the two solutions (see \ref{alg:pnp-fbs}).
+
+\begin{algorithm}
+    \caption{Plug-and-Play Forward--Backward Splitting (PnP-FBS)}
+    \label{alg:pnp-fbs}
+    \begin{algorithmic}[1]
+        \Require initial $x_0$, measurements $y$, step size $\tau>0$, regularization weight $\lambda$, max iterations $K$
+        \For{$k=0,\dots,K-1$}
+            \State $z_k \gets x_k - \tau \nabla_x f(x_k,y)$
+            \State $x_{k+1} \gets \operatorname{prox}_{\tau\lambda s}(z_k)$ \Comment{or replace prox by a denoiser $D_{\sigma}$ for PnP}
+        \EndFor
+        \Ensure $x_K$
+    \end{algorithmic}
+\end{algorithm}
+% ADMM algorithm
+\begin{algorithm}
+    \caption{Plug-and-Play ADMM (PnP-ADMM)}
+    \label{alg:pnp-admm}
+    \begin{algorithmic}[1]
+        \Require initial $x_0$, $v_0$, $u_0$, measurements $y$, penalty parameter $\rho>0$, max iterations $K$
+        \For{$k=0,\dots,K-1$}
+            \State $x_{k+1} \gets \arg \min_x f(x,y) + \frac{\rho}{2} \|x - v_k + u_k\|_2^2$
+            \State $v_{k+1} \gets \operatorname{prox}_{\frac{1}{\rho} s}(x_{k+1} + u_k)$ \Comment{or replace prox by a denoiser $D_{\sigma}$ for PnP}
+            \State $u_{k+1} \gets u_k + x_{k+1} - v_{k+1}$
+        \EndFor
+        \Ensure $x_K$
+    \end{algorithmic}
+\end{algorithm}
+
+\subsection{Score matching}
+
+We will refer to the quantity $-\nabla \ln p(x)$ as the score. This score can be modeled using a Denoising Auto-Encoder (DAE) as highlighted by \authoryearcite{vincent_connection_2011}.
+Other methods such as Score Matching \cite{hyvarinen_estimation_2005} can also be used to learn this score function.
+
+The theorethical background is given by Tweedie's formula \cite{efron_tweedies_2011}. Under the assumption of additive gaussian noise, we can reformulate this expectation as the following :
+
+\begin{equation}
+    \mathbb{E}\left[X | Y = y\right] = y + \sigma^2 \nabla_y \ln p(y)
+\end{equation}
+
+This formulation shows that there is a bridge between bayesian inference and denoising. Indeed, any denoising network $D_{\sigma}$ such as a DAE will give an approximation of this expectation $\mathbb{E}\left[X | Y = y\right]$ which allows us to use to estimate the score function as follows :
+
+\begin{equation}
+    s_Y(y) = \frac{D_{\sigma}(y) - y}{\sigma^2}
+\end{equation}
+
+\subsection{Plug-and-Play Priors}
+
+In order to solve the MAP problem, on may choose to regularize the optimisation process with the Plug-and-Play framework, as first introduced by \authoryearcite{venkatakrishnan_plug-and-play_2013}. The idea is to plug a pre-trained denoiser $D_{\sigma}$ with given noise variance, which will be our prior.
+This denoiser is often trained under the Minimum mean Squared Error (MMSE) objective, which leads it to learn the expectation of the posterior $\mathbb{E}\left[X | Y = y\right]$ for a given sample $y$.
+Venkatakrishnan et al. are plugging it into the Alternating Direction Method of Multipliers (ADMM) \cite{boyd_distributed_2010} as a replacement of the intractable proximal step.
+\authoryearcite{modrzyk_convergent_nodate} proposed another iterative Plug-and-Play algorithm called Majorization-Minimization which is meant to solve linear Poisson inverse problems. 
+
+However, previous approaches have a limitation as the denoiser is often not designed to match the proximal operator it replaces in the ADMM algorithm.
+\authoryearcite{pesme_map_2025} proposed a novel recusrion framework with vanishing noise to overcome this limitation.
+
+\paragraph{Flow matching}
+
+Flow matching is a generative modeling technique that aims to learn a velocity field that transforms a simple distribution (like Gaussian noise) into a complex target distribution (like images) through an ordinary differential equation (ODE).
+As done by \authoryearcite{martin_pnp-flow_2025}, the denoiser that replaces the proximal operator in the FBS algorithm can be a time-dependant denoiser $D_t := Id (1-t)v_t^{\theta}$ built from a pre-trained velocity field $v_t^{\theta}$.
+This operator is specifically designed to denoise inputs from the straight path $X_t = (1 - t)X_0 + tX_1$ with $X_0$ and $x_1$ being the noise and target distribution domain respectively.
+In contrary to the regular PnP-FBS algorithm, if the result of the gradient $z$ is not in the support of $X_t$, it is brought back there through an interpolation step before applying the PnP denoising step.
+
+\newpage
+\section{Self-supervised methods}
+
+
+\section{Noise2Noise framework}
+
+\section{Positron emission tomography}
+
+
+
+
+% Print the bibliography
+\newpage
+\printbibliography
+
+\end{document}
