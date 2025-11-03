@@ -58,22 +58,6 @@ Then the Alternating Direction Method of Multipliers (ADMM) \cite{boyd_distribut
     \end{algorithmic}
 \end{algorithm}
 
-\subsection{Score matching}
-
-We will refer to the quantity $-\nabla \ln p(x)$ as the score. This score can be modeled using a Denoising Auto-Encoder (DAE) as highlighted by \authoryearcite{vincent_connection_2011}.
-Other methods such as Score Matching \cite{hyvarinen_estimation_2005} can also be used to learn this score function.
-
-The theorethical background is given by Tweedie's formula \cite{efron_tweedies_2011}. Under the assumption of additive gaussian noise, we can reformulate this expectation as the following :
-
-\begin{equation}
-    \mathbb{E}\left[X | Y = y\right] = y + \sigma^2 \nabla_y \ln p(y)
-\end{equation}
-
-This formulation shows that there is a bridge between bayesian inference and denoising. Indeed, any denoising network $D_{\sigma}$ such as a DAE will give an approximation of this expectation $\mathbb{E}\left[X | Y = y\right]$ which allows us to use to estimate the score function as follows :
-
-\begin{equation}
-    s_Y(y) = \frac{D_{\sigma}(y) - y}{\sigma^2}
-\end{equation}
 
 \subsection{Plug-and-Play Priors}
 

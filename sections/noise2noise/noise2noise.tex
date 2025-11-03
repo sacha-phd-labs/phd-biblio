@@ -1,3 +1,108 @@
-\section{Noise2Noise framework}
+\section{Self-supervised methods}
 
-blablazjeczijhb
+Self-supervised methods are being explored to circumvent the need for clean targets in training denoising models or models capable of resolving linear inverse problems.
+These methods are typically studied in the medical imaging community where acquiring clean targets is often impractical or impossible.
+They often rely on certain assumptions on the noise model or the data acquisition process.
+For instance, in Positron Emission Tomography (PET), the reconstruction model is supposed to be linear and the noise is modelled as Poissonian.
+
+\subsection{Score-based methods}
+
+In the bayesian framework, we will refer to the quantity $-\nabla \ln p(x)$ as the score. This score can be modeled using a Denoising Auto-Encoder (DAE) as highlighted by \authoryearcite{vincent_connection_2011}.
+Indeed, the DAE is trained to minimize the following objective :
+
+\begin{equation}
+    \mathbb{E}_{X, Y}\left[\|X - D_{\sigma}(Y)\|_2^2\right]
+\end{equation}
+
+where $Y = X + N(0, \sigma^2 I)$ is a noisy version of the clean data $X$ and $D_{\sigma}$ is the denoising network with noise level $\sigma$.
+
+
+
+% Other methods such as Score Matching \cite{hyvarinen_estimation_2005} can also be used to learn this score function.
+
+The theorethical background is given by Tweedie's formula \cite{efron_tweedies_2011}. Under the assumption of additive gaussian noise, we can reformulate this expectation as the following :
+
+\begin{equation}
+    \mathbb{E}\left[X | Y = y\right] = y + \sigma^2 \nabla_y \ln p(y)
+\end{equation}
+
+This formulation shows that there is a bridge between bayesian inference and denoising. Indeed, any denoising network $D_{\sigma}$ such as a DAE will give an approximation of this expectation $\mathbb{E}\left[X | Y = y\right]$ which allows us to use to estimate the score function as follows :
+
+\begin{equation}
+    s_Y(y) = \frac{D_{\sigma}(y) - y}{\sigma^2}
+\end{equation}
+
+\authoryearcite{alain_what_2014} bring further mathematical proof that when the noise level $\sigma$ tends to zero, the DAE learns the score of the data distribution as follows :
+\begin{equation}
+    s_Y(y) = \lim_{\sigma \to 0} \frac{D_{\sigma}(y) - y}{\sigma^2}
+\end{equation}
+
+\paragraph{What about Poisson noise}
+
+The previous formulations are only valid under the assumption of additive gaussian noise. However, in many imaging modalities such as PET, the noise is better modeled as Poissonian. The previous score estimation method can be adapted to this noise model with :
+
+\begin{equation}
+    \mathbb{E}\left[X | Y = y\right] = \left(y + \frac{1}{2}\right)\exp \left( \nabla_y \ln p(y)\right)
+\end{equation}
+ 
+Therefore, the score function under Poisson noise can be estimated as follows :
+
+\begin{equation}
+    s_Y(y) = \ln \left( \frac{D_{Poisson}(y)}{y + \frac{1}{2}} \right)
+\end{equation}
+
+\subsection{Noise2X}
+
+\paragraph{Noise2Noise}
+
+A seminal work in this area is the Noise2Noise framework \cite{lehtinen_noise2noise_2018} which demonstrates that it is possible to train a denoising model using only pairs of noisy images as targets, provided that the noise is zero-mean and independent between the input and target images.
+Their work show promissing results at learning a model to map a noisy image towards the mean of its noisy realizations, which is the clean image in the case of zero-mean noise.
+INSERT FIGURE HERE
+\authoryearcite{lehtinen_noise2noise_2018} show that their method performs well on various type of noise such as Gaussian, Poisson or Bernoulli noise.
+Hence, it is likely to perform well on PET imaging data as well, which is our motivation for studying this method, in addition to the possibility of acquiring pairs of noisy images in this context.
+
+\paragraph{Noise2Void / Noise2Self}
+
+The Noise2Void \cite{krull_noise2void_2019} and Noise2Self \cite{batson_noise2self_nodate} frameworks further extend the idea of training denoising models without clean targets by using only single noisy images.
+\authoryearcite{batson_noise2self_nodate} introduce the concept of \textit{$\mathcal{J}$-invariant} functions, which are functions that do not depend on certain subsets of their input.
+We train a denoising model to be $\mathcal{J}$-invariant by masking certain pixels of the input image and predicting their values based on the surrounding pixels.
+The work of \authoryearcite{krull_noise2void_2019} implements this idea by randomly masking pixels in the input image during training and using the unmasked pixels to predict the masked ones.
+This is called the \textit{blind-spot} strategy and ensures that the model does not learn to simply copy the noisy input to the output, thus learning the identity.
+
+\paragraph{Noisier2Noise}
+
+In order to leverage the lack of paired noisy images, \authoryearcite{moran_noisier2noise_2019} propose the Noisier2Noise framework which consists in adding extra noise to a single noisy image to create a pair of noisy images.
+The model is then trained to map the more noisy image to the less noisy one, learning the underlying noise model in the process.
+This learned noise model is then assumed to retrieve the clean image from a noisy observation at inference time.
+
+\paragraph{Noise2Score}
+
+The authors in \cite{kim_noise2score_nodate} propose a 2-step framework called Noise2Score. First the score function is being estimated using a DAE trained under framework closed to Noisier2Noise \cite{moran_noisier2noise_2019} where noise is embedded into the images according to the noise model and then the network learn the mapping to retrieve less noisy images.
+Then, the estimated denoised images are simply computed using the appropriate Tweedie's formula variant.
+This method is very promissing at it is at the crossroad between bayesian methods with strong mathematical background and self-supervised learning.
+
+\paragraph{Generalization to linear inverse problems}
+
+\authoryearcite{xia_training_nodate} extend the Noise2Score framework to linear inverse problems such as deblurring or inpainting. We consider the linear inverse problem defined as $y = A x + e$ where $A$ is a known degradation matrix and $e$ is an additive random noise.
+For a given measurement $y_t$ of an image $x_t$, we can deduce two noisy realizations as follows :
+
+\begin{equation}
+    y_{t,1} = A_{t, 1} x_t + e_{t,1}
+\end{equation}
+\begin{equation}
+    y_{t,2} = A_{t, 2} x_t + e_{t,2}
+\end{equation}
+
+In the context of non-blind estimation, ie when $A$ is known, we can optimize a neural network $f$ under the two following objectives :
+
+\begin{equation}
+    \mathcal{L}_{swap} = \frac{1}{T} \sum_{t=1}^T \| A_{t,2} f(y_{t,1}) - y_{t,2} \|_2^2 + \| A_{t,1} f(y_{t,2}) - y_{t,1} \|_2^2
+\end{equation}
+\begin{equation}
+    \mathcal{L}_{self} = \frac{1}{T} \sum_{t=1}^T \| A_{t,1} f(y_{t,1}) - y_{t,1} \|_2^2 + \| A_{t,2} f(y_{t,2}) - y_{t,2} \|_2^2
+\end{equation}
+
+Whereas the first loss $\mathcal{L}_{swap}$ encourages the network to learn the mapping between the two noisy realizations, the second loss $\mathcal{L}_{self}$ acts as a regularizer to ensure data consistency. The balance between the two loss is set through a regularization parameter $\lambda$ as follows :
+\begin{equation}
+    \mathcal{L} = \mathcal{L}_{swap} + \lambda \mathcal{L}_{self}
+\end{equation}
