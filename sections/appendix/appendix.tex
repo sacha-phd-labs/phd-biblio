@@ -1,0 +1,54 @@
+\section{Appendix}
+
+\subsection{Mathematical proofs}
+
+\paragraph{Tweedie's formula}
+\subparagraph{Additive gaussian noise}
+We recall that we are in the bayesian a posteriori setting where we want to estimate the unknown true signal $x$ from its noisy observation $y = x + \epsilon$, with $\epsilon \sim \mathcal{N}(0, \sigma^2 I)$.
+Bayes' rule gives us:
+\begin{equation*}
+    p(x|y) = \frac{p(y|x)p(x)}{p(y)}
+\end{equation*}
+The likelihood $p(y|x)$ is given by the noise distribution:
+\begin{equation*}
+    p(y|x) = \frac{1}{\sqrt{2 \pi \sigma^2}} \exp\left(-\frac{||y - x||^2}{2 \sigma^2}\right)
+\end{equation*}
+Thus we have:
+\begin{equation*}
+    p(x|y) = \frac{1}{Z(y)} \exp\left(-\frac{||y - x||^2}{2 \sigma^2}\right) p(x)
+\end{equation*}
+with $Z(y)$ acting as a normalizing constant:
+\begin{equation*}
+    Z(y) = \int p(x) \exp\left(-\frac{||y - x||^2}{2 \sigma^2}\right)dx
+\end{equation*}
+Then we compute the derivative of $p(y)$:
+\begin{align*}
+    \nabla_y p(y) &= \frac{d}{dy} \int p(y|x)p(x) dx \\
+    &= \int \frac{\partial}{\partial y} p(x) \exp\left(-\frac{||y - x||^2}{2 \sigma^2}\right) dx \\
+    &= - \frac{1}{\sigma^2} \int (y - x) p(x) \phi_{\sigma}(y - x) dx \\
+\end{align*}
+where we denote $\phi_{\sigma}$ the gaussian kernel of standard deviation $\sigma$.
+
+\begin{align*}
+    \nabla_y \ln p(y) = \frac{p'(y)}{p(y)} &= - \frac{1}{\sigma^2} \left( \int (y - x) \frac{p(x) \phi_{\sigma}(y - x)}{p(y)} dx \right) \\
+    &= - \frac{1}{\sigma^2} \left( y - \int x p(x|y) dx \right) \\
+    &= - \frac{1}{\sigma^2} (y - \mathbb{E}[x|y])
+\end{align*}
+
+\subparagraph{Poisson noise}
+
+The assumption of Poisson noise means that the likelihood $p(y|x)$ is given by:
+\begin{equation*}
+    p(y|x) = \frac{(x)^{y} e^{-x}}{y!}
+\end{equation*}
+Then we compute the derivative of $p(y)$:
+\begin{align*}
+    \exp(\ln \nabla_y p(y)) &= \frac{p(y+1)}{p(y)} \\
+    &= \frac{1}{p(y)} \int p(x) \frac{x}{y+1}\frac{x^y}{y!}e^{-x} dx \\
+    &= \frac{1}{y+1} \int x \frac{p(x) p(y|x)}{p(y)} dx \\
+    &= \frac{1}{y+1} \mathbb{E}[x|y]
+\end{align*}
+Thus we have:
+\begin{equation*}
+    \mathbb{E}[x|y] = (y+1) \exp(\ln \nabla_y p(y))
+\end{equation*}

@@ -12,6 +12,13 @@
 
 \usepackage{algorithm,algpseudocode}
 
+\usepackage{amsthm}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{definition}{Definition}[section]
+\newtheorem{lemma}{Lemma}[section]
+\newtheorem{proposition}{Proposition}[section]
+\newtheorem{corollary}{Corollary}[section]
+
 
 % Bibliography setup
 \usepackage[backend=biber,style=ieee,uniquename=init]{biblatex}
@@ -93,6 +100,14 @@ with $A \in \mathbb{R}^{d \times n}$ the linear forward operator and $\epsilon \
 \newpage
 
 \include{sections/noise2noise/noise2noise.tex}
+
+\newpage
+
+\include{sections/pet/pet.tex}
+
+\newpage
+\appendix
+\include{sections/appendix/appendix.tex}
 
 % Print the bibliography
 \newpage

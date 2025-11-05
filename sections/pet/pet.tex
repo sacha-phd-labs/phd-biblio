@@ -1,0 +1,172 @@
+\section{Positron Emission Tomography (PET)}
+
+\subsection{How PET works}
+
+\subsection{Deterministic reconstruction methods}
+
+\paragraph{Radon transform}
+
+\begin{definition}{Radon Transform}
+\label{def:radon_transform}
+    The Radon transform is an integral transform that takes a two-dimensional function $f(x,y)$ and computes its line integrals along straight lines parameterized by angle $\phi$ and distance $s$ from the origin.
+    Mathematically, the Radon transform is defined as:
+    \begin{equation}
+        g(s, \phi) = \int \int_{-\infty}^{\infty} f(x,y) \, \delta(s - x \cos \phi - y \sin \phi) \, dx dy
+    \end{equation}
+\end{definition}
+
+In the context of PET imaging, the Radon transform models the process of acquiring projection data (i.e., sinograms) from the distribution of radiotracer within the body.
+
+\begin{theorem}{Central Slice Theorem}
+\label{thm:central_slice}
+    The Radon transform is invertible in the frequency domain.
+\end{theorem}
+\begin{proof}
+    We consider the 1D Fourier transform of the projection $g(s,\phi)$ with respect to the variable $s$:
+    \begin{equation*}
+        G(\omega, \phi) = \int_{-\infty}^{\infty} g(s, \phi) e^{-i \omega s} ds
+    \end{equation*}
+    Substituting the expression for $g(s,\phi)$ into the Fourier transform, we get:
+    \begin{equation*}
+        G(\omega, \phi) = \int_{-\infty}^{\infty} \left( \int \int_{-\infty}^{\infty} f(x,y) \, \delta(s - x \cos \phi - y \sin \phi) \, dx dy \right) e^{-i \omega s} ds
+    \end{equation*}
+    Interchanging the order of integration, we have:
+    \begin{equation*}
+        G(\omega, \phi) = \int \int_{-\infty}^{\infty} f(x,y) \left( \int_{-\infty}^{\infty} \delta(s - x \cos \phi - y \sin \phi) e^{-i \omega s} ds \right) dx dy
+    \end{equation*}
+    The inner integral evaluates to $e^{-i \omega (x \cos \phi + y \sin \phi)}$, leading to:
+    \begin{equation*}
+        G(\omega, \phi) = \int \int_{-\infty}^{\infty} f(x,y) e^{-i \omega (x \cos \phi + y \sin \phi)} dx dy
+    \end{equation*}
+    This expression represents the 2D Fourier transform of $f(x,y)$ evaluated at the frequency coordinates $(\omega \cos \phi, \omega \sin \phi)$. Thus, we have:
+    \begin{equation}
+        G(\omega, \phi) = F(\omega \cos \phi, \omega \sin \phi)
+    \end{equation}
+    where $F(u,v)$ is the 2D Fourier transform of $f(x,y)$. This shows that the 1D Fourier transform of the projection at angle $\phi$ corresponds to a slice of the 2D Fourier transform of the object $f(x,y)$ along the direction defined by $\phi$.
+\end{proof}
+
+
+This theorem comes with limitations in practice as we can only acquire a limited number of projections and the data is noisy. Indeed, going from the frequency domain to the spatial domain requires interpolation, which can introduce artifacts if the sampling is not dense enough.
+Hence, it is not possible to perfectly reconstruct the original image using only the Radon transform and its inverse. 
+
+\paragraph{Filtered Back Projection (FBP)}
+Another possible reconstruction method is known as Back Projection (BP).
+This method consists in smearing back each projection across the image along the direction it was acquired.
+
+\begin{definition}{Back Projection}
+    \label{def:back_projection}
+    The Back projection operation $b$ is defined as follows:
+    \begin{equation}
+        b(x, y) = \int_{0}^{\pi} g(s, \phi) d\phi = \int_{0}^{\pi} g(x \cos \phi + y \sin \phi, \phi) d\phi
+    \end{equation}
+\end{definition}
+
+\begin{proposition}
+    The Back Projection operation can be interpreted as a convolution of the original image with a $1/r$ kernel, where $r$ is the distance from the center of the image. This convolution results in a blurring effect, as high-frequency components of the image are attenuated
+\end{proposition}
+
+\begin{proof}
+    Taking the 2D Fourier transform of the Back Projection operation, we have:
+    \begin{align*}
+        B(u, v) &= \int_{-\infty}^{\infty} \int_{-\infty}^{\infty} \int_{0}^{\pi} g(s, \phi) e^{-2i \pi (ux + vy)} dx dy d\phi\\
+        &= \int_{0}^{\pi} \left( \int_{-\infty}^{\infty} \int_{-\infty}^{\infty} g(s, \phi) e^{-2i \pi (ux + vy)} dx dy \right) d\phi\\
+        &= \int_{0}^{\pi} \left( \int_{-\infty}^{\infty} g(s, \phi) e^{-2i \pi s \sqrt{u^2 + v^2}} ds \right) d\phi\\
+        &= \int_{0}^{\pi} G(\sqrt{u^2 + v^2}, \phi) d\phi
+    \end{align*}
+    Substituting the expression for $G(\omega, \phi)$ from the Central Slice Theorem (\ref{thm:central_slice}), we get:
+    \begin{equation*}
+        B(u,v) = \int_{0}^{\pi} F(\sqrt{u^2 + v^2} \cos \phi, \sqrt{u^2 + v^2} \sin \phi) d\phi
+    \end{equation*}
+    This integral represents a radial integration of the 2D Fourier transform of the original image $f(x,y)$.
+    The result is that the Back Projection operation effectively applies a low-pass filter to the original image, attenuating high-frequency components and resulting in a blurred image.
+\end{proof}
+
+To counteract this blurring effect, a filtering step is introduced before the Back Projection, leading to the Filtered Back Projection (FBP) method.
+
+\begin{definition}{Filtered Back Projection}
+    The Filtered Back Projection operation consists in applying a high-pass filter to the projections before performing the Back Projection:
+    \begin{equation}
+        f_{FBP}(x, y) = \int_{0}^{\pi} \left( g(s, \phi) * h(s) \right) d\phi
+    \end{equation}
+    where $h(s)$ is a high-pass filter kernel, such as the Ram-Lak filter.
+\end{definition}
+
+\subsection{Iterative reconstruction in PET}
+
+\subsubsection{Poisson bayesian inference}
+
+In PET imaging, the data acquisition process can be modeled as a Poisson process as the number of detected events in each detector pair follows a Poisson distribution.
+Thus, the likelihood of observing the measured data $y$ given the image $x$ can be expressed as:
+\begin{equation}
+    p(y|x) = \prod_{i=1}^{d} \frac{(\lambda_i(x))^{y_i} e^{-\lambda_i(x)}}{y_i!}
+\end{equation}
+where $\lambda_i(x) = (Ax)_i$ is the expected number of counts in detector pair $i$ given the image $x$. It is modeled as a linear operation of the image through the system matrix $A$.
+
+We want to estimate the image $x$ that maximizes the likelihood of the unobserved data $x$ given the observed data $y$. This is known as the Maximum Likelihood (ML) estimation. We will transform this formulation into a minimization problem by taking the negative log-likelihood:
+
+\begin{equation}
+    x_{ML} = \arg \min_{x} \sum_{i=1}^{d} \left( (Ax)_i - y_i \log (Ax)_i\right)
+\end{equation}
+
+\subsubsection{Maximum-Likelihood Expectation-Maximization (MLEM)}
+
+The MLEM algorithm is an iterative method to find the ML estimate of the image $x$ given the measured data $y$.
+
+\begin{algorithm}
+\caption{Maximum-Likelihood Expectation-Maximization (MLEM)}
+\begin{algorithmic}[1]
+\State \textbf{Input:} Measured data $y$, system matrix $A$, initial estimate $x^{(0)}$
+\State \textbf{Output:} Estimated image $x^{(k)}$
+\For{$k = 0$ to $K-1$}
+    \State \textbf{E-step:} Compute the expected number of counts
+    \begin{equation*}
+        \hat{y}_i^{(k)} = (Ax^{(k)})_i
+    \end{equation*}
+    \State \textbf{M-step:} Update the image estimate
+    \begin{equation*}
+        x_j^{(k+1)} = x_j^{(k)} \frac{\sum_{i=1}^{d} A_{ij} \frac{y_i}{\hat{y}_i^{(k)}}}{\sum_{i=1}^{d} A_{ij}}
+    \end{equation*}
+\EndFor
+\State \textbf{Return} $x^{(K)}$
+\end{algorithmic}
+\end{algorithm}
+
+\begin{proposition}
+    The MLEM algorithm converges to a local maximum of the likelihood function, providing an estimate of the image $x$ that is consistent with the measured data $y$ under the Poisson noise model.
+\end{proposition}
+
+\begin{proof}
+    First we compute the complete data ; $z_{ij}$ is the number of photons emitted from voxel $j$ and detected by detector pair $i$. Hence, $y_i$ = $\sum_{j} z_{ij}$ and $\bar{z_{ij}} = a_{ij} x_j$.
+    The complete data likelihood is given by:
+    \begin{align*}
+        &p(z|x) = \prod_{i=1}^{d} \prod_{j=1}^{n} \frac{(a_{ij} x_j)^{z_{ij}}}{z_{ij}!} e^{-a_{ij} x_j} \\
+        & \Rightarrow \log p(z|x) = \sum_{i=1}^{d} \sum_{j=1}^{n} \left( z_{ij} \log (a_{ij} x_j) - a_{ij} x_j + K \right) 
+    \end{align*}
+    Then we compute its derivative with respect to $x_j$ and set it to zero to find the maximum:
+    \begin{equation*}
+        \frac{\partial \log p(z|x)}{\partial x_j} = \sum_{i=1}^{d} \left( \frac{z_{ij}}{x_j} - a_{ij} \right) = 0
+    \end{equation*}
+    This leads to the update rule:
+    \begin{equation*}
+        x_j = \frac{\sum_{i=1}^{d} z_{ij}}{\sum_{i=1}^{d} a_{ij}}
+    \end{equation*}
+    Since $z_{ij}$ is unobserved, we replace it with its expectation given the current estimate $x^{(k)}$:
+    \begin{equation*}
+        \hat{z}_{ij}^{(k)} = \mathbb{E}[z_{ij} | y, x^{(k)}] = a_{ij} x_j^{(k)} \frac{y_i}{(Ax^{(k)})_i}
+    \end{equation*}
+    Substituting this into the update rule gives the M-step of the MLEM algorithm:
+    \begin{equation*}
+        x_j^{(k+1)} = x_j^{(k)} \frac{\sum_{i=1}^{d} a_{ij} \frac{y_i}{(Ax^{(k)})_i}}{\sum_{i=1}^{d} a_{ij}}
+    \end{equation*}
+    This iterative process continues until convergence, leading to an estimate of $x$ that maximizes the likelihood function.
+\end{proof}
+
+\subsubsection{Ordered Subset Expectation Maximization (OSEM)}
+
+TODO
+
+
+\subsection{Deep learning for PET image reconstruction}
+
+\subsubsection{Supervised methods}
+\subsubsection{Unrolling techniques}

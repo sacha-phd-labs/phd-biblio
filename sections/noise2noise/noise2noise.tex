@@ -42,13 +42,13 @@ This formulation shows that there is a bridge between bayesian inference and den
 The previous formulations are only valid under the assumption of additive gaussian noise. However, in many imaging modalities such as PET, the noise is better modeled as Poissonian. The previous score estimation method can be adapted to this noise model with :
 
 \begin{equation}
-    \mathbb{E}\left[X | Y = y\right] = \left(y + \frac{1}{2}\right)\exp \left( \nabla_y \ln p(y)\right)
+    \mathbb{E}\left[X | Y = y\right] = \left(y + 1\right)\exp \left( \nabla_y \ln p(y)\right)
 \end{equation}
  
 Therefore, the score function under Poisson noise can be estimated as follows :
 
 \begin{equation}
-    s_Y(y) = \ln \left( \frac{D_{Poisson}(y)}{y + \frac{1}{2}} \right)
+    s_Y(y) = \ln \left( \frac{D_{Poisson}(y)}{y + 1} \right)
 \end{equation}
 
 \subsection{Noise2X}
