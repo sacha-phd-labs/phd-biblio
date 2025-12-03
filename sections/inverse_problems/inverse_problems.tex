@@ -1,0 +1,87 @@
+\section{Linear inverse problems}
+
+In the following section, we're having a look at linear inverse problems. These problems aim to recover a true signal $x \in \mathbb{R}^n$, transformed by a direct forward operation
+$\mathcal{A}$, given a measurement $y \in \mathbb{R}^d$:
+
+\begin{equation}
+    y = \mathcal{A}x
+\end{equation}
+
+An inverse problem is assumed to be well-posed if it satisfies the following three properties.
+\begin{enumerate}
+    \item Existence. $\forall y, \exists x$ such as $y = \mathcal{A}x$.
+    \item Uniquenness. $\forall y, \exists! x$, such as $y = \mathcal{A}x$.
+    \item Stability. $\mathcal{A}^{-1}$ is continuous.
+\end{enumerate}
+
+In our situation, the inverse problem is ill-posed, meaning that the one of the above properties is not satisfied.
+To tackle this issue, one may consider regularizing the problem by adding prior knowledge on the solution.
+In the context of image reconstruction, the forward operator $\mathcal{A}$ is often linear, and the measurements are corrupted by noise.
+The linear inverse problem can then be written as:
+
+\begin{equation}
+    y = Ax + n
+\end{equation}
+
+with $A \in \mathbb{R}^{d \times n}$ the linear forward operator and $n \in \mathbb{R}^d$ the noise with prior distribution $p_{n}$.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\subsection{Generalization of Noise2Noise to linear inverse problems}
+
+\authoryearcite{xia_training_nodate} extend the Noise2Noise framework (see section \ref{sec:noise2noise}) to linear inverse problems such as image restoration.
+For a given image $x$, we can deduce two noisy realizations $y_1 = A_1 x + n_1$ and $y_2 = A_2 x + n_2$
+
+In the context of non-blind estimation, ie when $A$ is known, we can optimize a neural network $f_{\theta}$ under the following objective function :
+
+\begin{equation}
+    \mathcal{L}_{swap} = \mathcal{L}(\theta) = \mathbb{E} \left[ \rho(A_2 f_{\theta}(y_1) - y_2) + \rho(A_1 f_{\theta}(y_2) - y_1) \right]
+\end{equation}
+
+For the sake of simplicity, we will assume that we have $A = A_1 = A_2$ in the following.
+Similarly to proposition \ref{prop:noise2noise_l2}, we have the following result when we choose the MSE as loss function $\rho = \| \cdot \|_2^2$, and zero-mean independant noise :
+
+\begin{equation*}
+    \mathcal{L}(\theta) = 2 \underset{y \sim p_{noisy}}{\mathbb{E}} \left[ \| Af_\theta(y) - x \|_2^2 \right] + \left[ \| Af_\theta(y) - x \|_2^2 \right] + cste
+\end{equation*}
+
+which is the same objective as minimizing the MSE between the network output projected into the measurement space and the ground truth image projected into the measurement space, up to a constant.
+Note that choosing $I = A = A_1 = A_2$ is equivalent to the regular Noise2Noise framework.
+
+The authors add a second term to the loss function to enforce data consistency with respect to the measurements $y$. They present it as a regularization term in the inversion process.
+
+\begin{equation*}
+    \mathcal{L}_{self} = \mathbb{E} \left[ \rho(A_1 f_{\theta}(y_1) - y_1) + \rho(A_2 f_{\theta}(y_2) - y_2) \right]
+\end{equation*}
+
+
+The final loss function is then written as :
+\begin{equation}
+    \mathcal{L}_{total} = \mathcal{L}_{swap} + \lambda \mathcal{L}_{self}
+\end{equation}
+
+with $\lambda$ a hyperparameter to tune the weight of the data-consistency term.
+
+
+
+The previous strategy can also be adapted to the following inversion problem :
+\begin{equation}
+    y \sim \mathcal{C}(Ax + b)
+\end{equation}
+
+where $\mathcal{C}$ is a corruption process (e.g. Poisson noise), $A$ is a known linear operator and $b$ is an unknown systematic error.
+
+TODO

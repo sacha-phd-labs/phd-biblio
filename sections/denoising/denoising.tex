@@ -1,0 +1,301 @@
+\section{Denoising methods}
+
+In this section, we present several denoising methods for a certain signal $x$ corrupted by noise to produce a noisy observation $y$.
+We denote this corruption process as follows :
+
+\begin{equation}
+    y \sim \mathcal{C}(x)
+\end{equation}
+
+\subsection{Self-supervised denoising}
+
+\subsubsection{Denoising Auto-Encoders}
+
+Whereas traditional auto-encoders are trained to reconstruct their input through an encoder-decoder structure, Denoising auto-encoders (DAEs) are trained to reconstruct clean data from corrupted versions of it.
+They have been first introduced by Vincent et al. in 2008 \cite{vincent_extracting_2008} and have since been widely used in various applications such as image denoising, inpainting or other inverse problems.
+The DAE objective is thus :
+
+\begin{equation}
+    \mathcal{L}_{DAE} = \underset{\substack{X \sim p_X \\ Y \sim N(X)}}{\mathbb{E}} \left[ \| X - f(Y) \|_2^2 \right]
+\end{equation}
+
+with $N$ being a random corruption process.
+
+\begin{proposition}
+    A neural network $f = D_{\sigma}$ trained under the DAE objective estimates the following quantity :
+    \begin{equation}
+        D_{\sigma}(y) = \mathbb{E}\left[X | Y = y\right]
+    \end{equation}
+\end{proposition}
+
+\begin{proof}
+    We have :
+    \begin{align*}
+        D_{\sigma}(y) &= \arg \min_z \mathbb{E}_{X|Y=y}\left[\|X - z\|_2^2\right] \\
+        &= \arg \min_z \int \|x - z\|_2^2 p(x|y) dx
+    \end{align*}
+    Taking the derivative with respect to $z$ and setting it to zero gives us :
+    \begin{align*}
+        \frac{\partial}{\partial z} \int \|x - z\|_2^2 p(x|y) dx &= \int 2(z - x) p(x|y) dx = 0 \\
+        &\Rightarrow z = \int x p(x|y) dx = \mathbb{E}[X | Y = y]
+    \end{align*}
+\end{proof}
+
+\subsubsection{Score-based denoising}
+
+
+\begin{definition}{Score function}
+    The score function of a random variable $X$ with probability density function $p(x)$ is defined as the gradient of the log-density with respect to $x$ :
+    \begin{equation}
+        s_X(x) = \nabla_x \ln p(x)
+    \end{equation}
+\end{definition}
+
+This function denotes the direction of maximum increase of the probability density function at point $x$.
+
+\paragraph{Score matching estimation}
+
+As first introduced by \authoryearcite{hyvarinen_estimation_2005}, score matching is a method to estimate parametric models of probability density functions without requiring the computation of the normalizing constant.
+Given a parametric model $p(x; \theta)$ with parameter $\theta$, we want to minimize the distance between the data score function $s_X(x)$ and the model score function $s_X(x; \theta)$ using the following objective :
+
+\begin{equation}
+    \mathcal{L}_{SM}(\theta) = \mathbb{E}_X \left[ \| s_X(X) - s_{X}(X; \theta) \|_2^2 \right]
+\end{equation}
+
+Minimization of this objective does not require knowledge of the normalizing constant of $p(x; \theta)$ as it only involves derivatives of the log-density.
+They also showh that we don't need to know the data score function $s_X(x)$ to optimize this objective as it can be rewritten as :
+
+\begin{equation}
+    \mathcal{L}_{SM}(\theta) = \mathbb{E}_X \left[ Tr \left( \nabla_x s_X(X; \theta) \right) + \frac{1}{2} \| s_X(X; \theta) \|_2^2 \right] + C
+\end{equation}
+
+This is very convenient as it avoids the need to estimate the data score function over the observed data, which is generally intractable.
+
+\paragraph{Denoising Auto-Encoders and score function estimation}
+
+
+
+
+DAEs and score matching principles have been linked together by \authoryearcite{vincent_connection_2011}. They built an objective similar to score matching but defined on clean/noisy image pair with the corruption process $N$ distribution being known.
+
+\begin{equation}
+    \mathcal{L}_{DSM}(\theta) = \underset{X \sim p_X \\ Y \sim N(X)}{\mathbb{E}} \left[ \| s_X(Y, \theta) - s_{Y|X}(Y|X) \|_2^2 \right]
+\end{equation}
+
+They prove the specific case of Tweedie's formula for additive gaussian noise (see Theorem \ref{theorem:tweedie_gaussian}) which will be considered in the following.
+
+\authoryearcite{alain_what_2014} further prove that when the gaussian noise level $\sigma$ tends to zero, the DAE learns the score of the data distribution as follows :
+
+\begin{equation}
+    f_{\theta^*}(y) = y + \sigma^2 s_X(y) + \underset{\sigma \to 0}{o}(\sigma^2)
+\end{equation}
+
+This can be generalized to a wider range of exponential family distributions thanks to Tweedie's formula \cite{efron_tweedies_2011}. We retain the two following theorems that stand for additive gaussian noise and Poisson noise respectively.
+
+\begin{theorem}{Tweedie's formula for additive gaussian noise}
+    \label{theorem:tweedie_gaussian}
+    Let $X$ be a random variable and $Y = X + N$ be a noisy observation of $X$ corrupted by an additive gaussian noise $N$ independent from $X$ with variance $\sigma^2$. The MMSE estimator of $X$ given $Y = y$ is given by :
+    \begin{equation}
+        \mathbb{E}\left[X | Y = y\right] = y + \sigma^2 \nabla_y \ln p(y)
+    \end{equation}
+    where $\Sigma_N$ is the covariance matrix of the noise $N$.
+\end{theorem}
+
+\begin{proof}
+    Bayes' rule gives us:
+    \begin{equation*}
+        p(x|y) = \frac{p(y|x)p(x)}{p(y)}
+    \end{equation*}
+    The likelihood $p(y|x)$ is given by the noise distribution:
+    \begin{equation*}
+        p(y|x) = \frac{1}{\sqrt{2 \pi \sigma^2}} \exp\left(-\frac{||y - x||^2}{2 \sigma^2}\right)
+    \end{equation*}
+    Thus we have:
+    \begin{equation*}
+        p(x|y) = \frac{1}{Z(y)} \exp\left(-\frac{||y - x||^2}{2 \sigma^2}\right) p(x)
+    \end{equation*}
+    with $Z(y)$ acting as a normalizing constant:
+    \begin{equation*}
+        Z(y) = \int p(x) \exp\left(-\frac{||y - x||^2}{2 \sigma^2}\right)dx
+    \end{equation*}
+    Then we compute the derivative of $p(y)$:
+    \begin{align*}
+        \nabla_y p(y) &= \frac{d}{dy} \int p(y|x)p(x) dx \\
+        &= \int \frac{\partial}{\partial y} p(x) \exp\left(-\frac{||y - x||^2}{2 \sigma^2}\right) dx \\
+        &= - \frac{1}{\sigma^2} \int (y - x) p(x) \phi_{\sigma}(y - x) dx \\
+    \end{align*}
+    where we denote $\phi_{\sigma}$ the gaussian kernel of standard deviation $\sigma$.
+
+    \begin{align*}
+        \nabla_y \ln p(y) = \frac{p'(y)}{p(y)} &= - \frac{1}{\sigma^2} \left( \int (y - x) \frac{p(x) \phi_{\sigma}(y - x)}{p(y)} dx \right) \\
+        &= - \frac{1}{\sigma^2} \left( y - \int x p(x|y) dx \right) \\
+        &= - \frac{1}{\sigma^2} (y - \mathbb{E}[x|y])
+    \end{align*}
+\end{proof}
+
+\begin{theorem}{Tweedie's formula for Poisson noise}
+    Let $X$ be a random variable and $Y$ be a noisy observation of $X$ corrupted by poissonian noise. The MMSE estimator of $X$ given $Y = y$ is given by :
+    \begin{equation}
+        \mathbb{E}\left[X | Y = y\right] = (y + 1)\exp \left( \nabla_y \ln p(y)\right)
+    \end{equation}
+\end{theorem}
+
+\begin{proof}
+    The assumption of Poisson noise means that the likelihood $p(y|x)$ is given by:
+    \begin{equation*}
+        p(y|x) = \frac{(x)^{y} e^{-x}}{y!}
+    \end{equation*}
+    Then we compute the derivative of $p(y)$:
+    \begin{align*}
+        \exp(\ln \nabla_y p(y)) &= \frac{p(y+1)}{p(y)} \\
+        &= \frac{1}{p(y)} \int p(x) \frac{x}{y+1}\frac{x^y}{y!}e^{-x} dx \\
+        &= \frac{1}{y+1} \int x \frac{p(x) p(y|x)}{p(y)} dx \\
+        &= \frac{1}{y+1} \mathbb{E}[x|y]
+    \end{align*}
+    Thus we have:
+    \begin{equation*}
+        \mathbb{E}[x|y] = (y+1) \exp(\ln \nabla_y p(y))
+    \end{equation*}
+\end{proof}
+
+
+Given the previous proposition and theorems, one can build a link between denoising auto-encoders and score function estimation as follows :
+
+\begin{equation}
+    s_Y(y) = \frac{D_{\sigma}(y) - y}{\sigma^2} \quad \text{(Gaussian noise)}
+\end{equation}
+\begin{equation}
+    s_Y(y) = \ln \left( \frac{D_{Poisson}(y)}{y + 1} \right) \quad \text{(Poisson noise)}
+\end{equation}
+
+We can highlight an intriguing application of \authoryearcite{kim_noise2score_nodate} who leverage this link to estimate the score function using a DAE trained under an additive gaussian noise assumption, even when the actual noise model is not gaussian. They then use the estimated score function to denoise images corrupted by other types of noise using the appropriate variant of Tweedie's formula.
+
+
+\paragraph{Noise2Void / Noise2Self}
+
+The Noise2Void \cite{krull_noise2void_2019} and Noise2Self \cite{batson_noise2self_nodate} frameworks further extend the idea of training denoising models without clean targets by using only single noisy images.
+\authoryearcite{batson_noise2self_nodate} introduce the concept of \textit{$\mathcal{J}$-invariant} functions, which are functions that do not depend on certain subsets of their input.
+We train a denoising model to be $\mathcal{J}$-invariant by masking certain pixels of the input image and predicting their values based on the surrounding pixels.
+The work of \authoryearcite{krull_noise2void_2019} implements this idea by randomly masking pixels in the input image during training and using the unmasked pixels to predict the masked ones.
+This is called the \textit{blind-spot} strategy and ensures that the model does not learn to simply copy the noisy input to the output, thus learning the identity.
+
+\paragraph{Noisier2Noise}
+
+In order to leverage the lack of paired noisy images, \authoryearcite{moran_noisier2noise_2019} propose the Noisier2Noise framework which consists in adding extra noise to a single noisy image to create a pair of noisy images.
+The model is then trained to map the more noisy image to the less noisy one, learning the underlying noise model in the process.
+This learned noise model is then assumed to retrieve the clean image from a noisy observation at inference time.
+
+\paragraph{Noise2Score}
+
+The authors in \cite{kim_noise2score_nodate} propose a 2-step framework called Noise2Score. First the score function is being estimated using a DAE trained under framework closed to Noisier2Noise \cite{moran_noisier2noise_2019} where noise is embedded into the images according to the noise model and then the network learn the mapping to retrieve less noisy images.
+Then, the estimated denoised images are simply computed using the appropriate Tweedie's formula variant.
+This method is very promissing at it is at the crossroad between bayesian methods with strong mathematical background and self-supervised learning.
+
+\subsection{\label{sec:noise2noise}Noise2Noise}
+
+A seminal work in the denoising field is the Noise2Noise framework \cite{lehtinen_noise2noise_2018}.
+Noise2Noise is a denoising method at the crossroad between self-supervised methods — which learn to denoise only from noisy samples — and supervised methods — which require clean targets to learn the mapping between noisy and clean image.
+The key idea of Noise2Noise is that we learn to denoise images from pairs of noisy images instead of noisy-clean image pairs or single noisy images.
+These pairs of noisy images can be obtained in various ways depending on the application. Each pair must represent the same underlying clean image but with different realizations of the noise process.
+Hence, we use the information contained in the noisy data itself to learn how to denoise it, without ever observing clean images.
+
+Let us consider the case where the noise process is additive, which applies well to most common noise models such as Gaussian or Poisson noise :
+
+\begin{equation*}
+    y = x + n,\qquad n \sim p
+\end{equation*}
+
+We train a neural network $f_\theta$ with parameters $\theta$ to map a noisy image $y_1 = x + n_1$ to another noisy image $y_2 = x + n_2$ representing a different realization of the same underlying clean image $x$ and vice versa by minimizing the following loss function :
+
+\begin{equation}
+    \mathcal{L}(\theta) = \underset{\substack{y_1, y_2 \sim p_{noisy}}}{\mathbb{E}} \left[ \rho(f_\theta(y_1) - y_2) + \rho(f_\theta(y_2) - y_1) \right] \\
+\end{equation}
+
+with $\rho$ a loss function such as the Mean Squared Error (MSE), the Mean Absolute Error (MAE) or any other appropriate loss.
+
+\begin{proposition}
+    \label{prop:noise2noise_l2}
+    Minimizing the above loss function with $\rho = \| \cdot \|_2^2$ leads to parameters that recover the underlying clean image in expectation under the following conditions :
+    \begin{itemize}
+        \item The noise realizations $n_1$ and $n_2$ are independent given the clean image $s$ (i.e. $y_1 | x \independent y_2 | x$).
+        \item The noise has zero mean, ie $\mathbb{E}[n_i] = 0$ for $i = 1, 2$.
+    \end{itemize}
+\end{proposition}
+
+
+\begin{proof}
+    We expand the loss function as follows :
+    \begin{align*}
+        \mathbb{E} \left[ \| f_\theta(y_1) - y_2 \|_2^2 \right] &= \mathbb{E} \left[ \| f_\theta(y_1) - (x + n_2) \|_2^2 \right] \\
+        &= \mathbb{E} \left[ \|( f_\theta(y_1) - x) - n_2 \|_2^2 \right] \\
+        &= \mathbb{E} \left[ \| f_\theta(y_1) - x \|_2^2 \right] + \mathbb{E} \left[ \| n_2 \|_2^2 \right] - 2 \mathbb{E} \left[ (f_\theta(y_1) - x)^T n_2 \right]
+    \end{align*}
+    The cross term vanishes due to the independence and zero-mean assumptions on the noise :
+    \begin{align*}
+        \mathbb{E} \left[ (f_\theta(y_i) - x)^T n_j \right] &= \mathbb{E} \left[ (f_\theta(y_i) - x)\right] \mathbb{E}_{n_j} && y_i | x \independent y_j | x\\
+        &= 0  && \text{(zero-mean, $\mathbb{E}[n_j] = 0$)}
+    \end{align*}
+    We can do the same for the second term of the loss by swapping $y_1$ and $y_2$ and we get the following result :
+    \begin{equation*}
+        \mathcal{L}(\theta) = 2 \underset{y \sim p_{noisy}}{\mathbb{E}} \left[ \| f_\theta(y) - x \|_2^2 \right] + cste
+    \end{equation*}
+    where we are left with the standard denoising loss and its underlying bias and variance decomposition, plus a constant noise variance term which has no influence as it is independent of $\theta$.
+\end{proof}
+
+\begin{proposition}
+    If the noise process is poissonian, ie $y \sim \text{Poisson}(x)$, then training a neural network $f_\theta$ to minimize the loss function defined above with the poisson negative log-likelihood leads to parameters that recover the underlying clean image in expectation under the following condition :
+    \begin{itemize}
+        \item The noise realizations $y_1$ and $y_2$ are independent given the clean image $x$ (i.e. $y_1 | x \independent y_2 | x$).
+    \end{itemize}
+\end{proposition}
+
+\begin{proof}
+    The poisson negative log-likelihood can be expressed as follows :
+    \begin{equation*}
+        \mathcal{L}_{Poisson}(y_1, y_2) = y_1 - y_2 \log(y_1) + \log(y_2!)
+    \end{equation*}
+    We expand the loss function with respect to the Noise2Noise framework and the independence assumption :
+    \begin{align*}
+        \mathbb{E} \left[ \mathcal{L}_{Poisson}(f_\theta(y_1), y_2) \right] &= \mathbb{E} \left[ f_\theta(y_1) - y_2 \log(f_\theta(y_1)) + \log(y_2!) \right] \\
+        &= \mathbb{E} \left[ f_\theta(y_1) - \mathbb{E}_{y_2} \left[ y_2 | x \right] \log(f_\theta(y_1)) + \mathbb{E}_{y_2} \left[ \log(y_2!) | x \right] \right] \\
+        &= \mathbb{E} \left[ f_\theta(y_1) - x \log(f_\theta(y_1)) + \mathbb{E}_{y_2} \left[ \log(y_2!) | x \right] \right]
+    \end{align*}
+    We can do the same for the second term of the loss by swapping $y_1$ and $y_2$ and we get the following result :
+    \begin{equation*}
+        \mathcal{L}(\theta) = 2 \underset{y \sim Poisson(x)}{\mathbb{E}} \left[ f_\theta(y) - x \log(f_\theta(y)) \right] + cste
+    \end{equation*}
+    which is the standard clean poisson negative-log likelihood loss plus a constant term independent of $\theta$.
+\end{proof}
+
+In summary, having independant realizations is crucial for this framework to work.
+In the case of additive noise trained under the L2 loss, the noise must also be zero-mean.
+Either way, the method is very flexible and can be applied to various noise models. \authoryearcite{lehtinen_noise2noise_2018} also mention Bernoulli noise and text removal as possible applications of their method.
+The previous propositions give theoretical guarantees that the method will recover the clean image in expectation under the stated conditions as illustrated in Figure \ref{fig:noise2noise}.
+
+\begin{figure}
+    \centering
+        \begin{tikzpicture}
+            % Network prediction node
+            \node [draw, circle, fill=blue!40, thick] (pred) {\textbf{$\hat{y}$}};
+            \node [above=0.15cm] at (pred.north) {Network prediction};
+
+            % Clean target node (not directly used, but for reference)
+            \node [shade, inner color=red!40, outer color=white, draw=none] (clean_target_halo) at ([xshift=-0.25cm, yshift=-1.5cm]pred.south west) [circle, minimum size=1.5cm] {};
+            \node [draw, circle, fill=red!40, thick] (clean_target) at (clean_target_halo)  {\textbf{$y$}};
+            \node [below=0.1cm] at (clean_target.south) {Unobserved target};
+
+            % Multiple noisy targets
+            \foreach \i/\angle/\distance in {1/210/2.3, 2/125/1.5, 3/290/1.8, 4/0/2, 5/130/3} {
+                \node[draw, circle, fill=orange!30, thick] (noisy\i) at ($(clean_target) + (\angle:\distance)$) {\textbf{$y_{\i}$}};
+                \draw[->, thick, opacity=0.4] (pred) -- (noisy\i);
+            }
+        \end{tikzpicture}
+    \caption{Illustration of the Noise2Noise framework where a neural network is trained to map a noisy input image to multiple noisy target images representing different realizations of the same underlying clean image.}
+    \label{fig:noise2noise}
+\end{figure}
+
+
+
+
+
+
