@@ -20,10 +20,10 @@ In the context of image reconstruction, the forward operator $\mathcal{A}$ is of
 The linear inverse problem can then be written as:
 
 \begin{equation}
-    y = Ax + n
+    y = Ax + b
 \end{equation}
 
-with $A \in \mathbb{R}^{d \times n}$ the linear forward operator and $n \in \mathbb{R}^d$ the noise with prior distribution $p_{n}$.
+with $A \in \mathbb{R}^{d \times n}$ the linear forward operator and $b \in \mathbb{R}^d$ the noise with prior distribution $p_{b}$.
 
 
 
@@ -43,45 +43,74 @@ with $A \in \mathbb{R}^{d \times n}$ the linear forward operator and $n \in \mat
 \subsection{Generalization of Noise2Noise to linear inverse problems}
 
 \authoryearcite{xia_training_nodate} extend the Noise2Noise framework (see section \ref{sec:noise2noise}) to linear inverse problems such as image restoration.
-For a given image $x$, we can deduce two noisy realizations $y_1 = A_1 x + n_1$ and $y_2 = A_2 x + n_2$
 
-In the context of non-blind estimation, ie when $A$ is known, we can optimize a neural network $f_{\theta}$ under the following objective function :
+We consider the same setting as in section \ref{sec:noise2noise}, with a probability space $(\Omega, \mathcal{F}, \mathbb{P})$ and random variables $X: \Omega \to \mathbb{R}^m$ (ground truth image) and $Y^{(j)}: \Omega \to \mathbb{R}^d, \quad j = 1, 2$ (degraded observed images).
+Similarly to equation \ref{eq:inverse_problem}, we now consider the following degradation model :
 
 \begin{equation}
-    \mathcal{L}_{swap} = \mathcal{L}(\theta) = \mathbb{E} \left[ \rho(A_2 f_{\theta}(y_1) - y_2) + \rho(A_1 f_{\theta}(y_2) - y_1) \right]
+    Y^{(j)} = A^{(j)} X + B^{(j)}, \quad j = 1, 2
 \end{equation}
 
-For the sake of simplicity, we will assume that we have $A = A_1 = A_2$ in the following.
-Similarly to proposition \ref{prop:noise2noise_l2}, we have the following result when we choose the MSE as loss function $\rho = \| \cdot \|_2^2$, and zero-mean independant noise :
+with $A^{(j)} \in \mathbb{R}^{d \times m}$ two linear operators.
+
+Let again $\{(Y_i^{(1)}, Y_i^{(2)})\}_{i=1}^N$ be a finite sequence of independant and statistically distributed random variables and $y_i^{(j)} = Y_i^{(j)}(\omega_i) = A_i^{(j)}x_i + b_i^{(j)}$ the observed degraded images for $\omega \in \Omega$, $j = 1, 2$, $i = 1, \dots, N$.
+In the context of non-blind estimation, i.e. when $A^{(j)}$ is known, we can optimize a neural network $f_{\theta}$ under the following objective function :
+
+\begin{equation}
+    \mathcal{L}_{swap}(\theta) = \frac{1}{N} \sum_{i=1}^N \left[ \rho(A_i^{(2)} f_{\theta}(y_i^{(1)}) - y_i^{(2)}) + \rho(A_i^{(1)} f_{\theta}(y_i^{(2)}) - y_i^{(1)}) \right]
+    \label{eq:xia_swap_loss}
+\end{equation}
+
+% For the sake of simplicity, we will assume that we have $A = A_i^{(1)} = A_i^{(2)} \forall i$ in the following.
+
+
+
+The authors add a second term to the loss function to enforce data consistency with respect to the measurements $y$. They introduce it as a regularization term in the inversion process.
 
 \begin{equation*}
-    \mathcal{L}(\theta) = 2 \underset{y \sim p_{noisy}}{\mathbb{E}} \left[ \| Af_\theta(y) - x \|_2^2 \right] + \left[ \| Af_\theta(y) - x \|_2^2 \right] + cste
+    \mathcal{L}_{self} = \frac{1}{N} \sum_{i=1}^N \left[ \rho(A_i^{(1)} f_{\theta}(y_i^{(1)}) - y_i^{(1)}) + \rho(A_i^{(2)} f_{\theta}(y_i^{(2)}) - y_i^{(2)}) \right]
 \end{equation*}
-
-which is the same objective as minimizing the MSE between the network output projected into the measurement space and the ground truth image projected into the measurement space, up to a constant.
-Note that choosing $I = A = A_1 = A_2$ is equivalent to the regular Noise2Noise framework.
-
-The authors add a second term to the loss function to enforce data consistency with respect to the measurements $y$. They present it as a regularization term in the inversion process.
-
-\begin{equation*}
-    \mathcal{L}_{self} = \mathbb{E} \left[ \rho(A_1 f_{\theta}(y_1) - y_1) + \rho(A_2 f_{\theta}(y_2) - y_2) \right]
-\end{equation*}
-
-
 The final loss function is then written as :
 \begin{equation}
     \mathcal{L}_{total} = \mathcal{L}_{swap} + \lambda \mathcal{L}_{self}
 \end{equation}
-
 with $\lambda$ a hyperparameter to tune the weight of the data-consistency term.
 
+\begin{remark}
+    Note that choosing $I = A_i^{(1)} = A_i^{(2)} \, \forall i$ is equivalent to the regular Noise2Noise framework.
+\end{remark}
 
+\begin{proposition}
+    Minimizing \ref{eq:xia_swap_loss} with $\rho = \| \cdot \|_2^2$ leads to parameters that retrieve the underlying distribution $p_x$ in expectation if the noise variables $B^{(1)}$ and $B^{(2)}$ are independant and zero-mean.:
+\end{proposition}
 
-The previous strategy can also be adapted to the following inversion problem :
+\begin{proof}
+    Proof in proposition \ref{prop:noise2noise_l2} is still valid as long as we replace $f_{\theta}(Y^{(j)})$ by $Af_{\theta}(Y^{(j)})$. We thus have :
+    \begin{align*}
+        R_{N}^{n2n}(\theta) &= \frac{1}{N} \sum_{i=1}^N \left[ \| A_i^{(2)} f_{\theta}(Y_i^{(1)}) - Y_i^{(2)} \|_2^2 + \| A_i^{(1)} f_{\theta}(Y_i^{(2)}) - Y_i^{(1)} \|_2^2 \right] \\
+        &= 2 R_{N}^{clean}(\theta) + \frac{1}{N} \sum_{i=1}^N \left[ \| B_i^{(1)} \|_2^2 + \| B_i^{(2)} \|_2^2 \right] + o(1)
+    \end{align*}
+\end{proof}
+
+\subsubsection{Poisson linear inverse problems}
+
+With the conventions of section \ref{sec:noise2noise_poisson}, we now consider the case of linear inverse problems corrupted by Poisson noise :
+
 \begin{equation}
-    y \sim \mathcal{C}(Ax + b)
+    Y^{(j)} \sim Poisson(A^{(j)} X), \quad j = 1, 2
 \end{equation}
 
-where $\mathcal{C}$ is a corruption process (e.g. Poisson noise), $A$ is a known linear operator and $b$ is an unknown systematic error.
+\begin{proposition}
+    If the noise process is poissonian, minimizing \ref{eq:xia_swap_loss} with $\rho$ as the Poisson negative log-likelihood leads to parameters that recover the underlying image distribution $p_x$ in expectation if $Y^{(1)} | X$ and $Y^{(2)} | X$ are independent.
+\end{proposition}
 
-TODO
+\begin{proof}
+    Proof in proposition \ref{prop:noise2noise_poisson} is still valid as long as we replace $f_{\theta}(Y^{(j)})$ by $A f_{\theta}(Y^{(j)})$. If we define the empirical risk as :
+    \begin{equation*}
+        R_{N}^{n2n}(\theta) = \frac{1}{N} \sum_{i=1}^N \left[ \mathcal{L}_{Poisson}(A_i^{(2)} f_{\theta}(Y_i^{(1)}), Y_i^{(2)}) + \mathcal{L}_{Poisson}(A_i^{(1)} f_{\theta}(Y_i^{(2)}), Y_i^{(1)}) \right]
+    \end{equation*}
+    then we have :
+    \begin{equation*}
+        R_{N}^{n2n}(\theta) \xrightarrow[N \to \infty]{a.s.} 2 \mathbb{E} \left[ f_\theta(Y) - A X \log(f_\theta(Y)) + \log(Y!)\right]
+    \end{equation*}
+\end{proof}

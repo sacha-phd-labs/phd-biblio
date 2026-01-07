@@ -197,74 +197,146 @@ A seminal work in the denoising field is the Noise2Noise framework \cite{lehtine
 Noise2Noise is a denoising method at the crossroad between self-supervised methods — which learn to denoise only from noisy samples — and supervised methods — which require clean targets to learn the mapping between noisy and clean image.
 The key idea of Noise2Noise is that we learn to denoise images from pairs of noisy images instead of noisy-clean image pairs or single noisy images.
 These pairs of noisy images can be obtained in various ways depending on the application. Each pair must represent the same underlying clean image but with different realizations of the noise process.
-Hence, we use the information contained in the noisy data itself to learn how to denoise it, without ever observing clean images.
+Hence, we use the information contained in the noisy data itself to learn how to denoise it, without ever observing clean images. \\
 
-Let us consider the case where the noise process is additive, which applies well to most common noise models such as Gaussian or Poisson noise :
-
-\begin{equation*}
-    y = x + n,\qquad n \sim p
-\end{equation*}
-
-We train a neural network $f_\theta$ with parameters $\theta$ to map a noisy image $y_1 = x + n_1$ to another noisy image $y_2 = x + n_2$ representing a different realization of the same underlying clean image $x$ and vice versa by minimizing the following loss function :
+Let $(\Omega, \mathcal{F}, \mathbb{P})$ be a probability space. Let $X : \Omega \to \mathbb{R}^n$, $B^{(1)},B^{(2)} : \Omega \to \mathbb{R}^n$ be random variables representing respectively the clean image and two realizations of the noise process.
+Let us consider the case where the noise process is additive, which applies well to most common noise models such as Gaussian or Poisson noise.
+The corruption process can thus be expressed as follows :
 
 \begin{equation}
-    \mathcal{L}(\theta) = \underset{\substack{y_1, y_2 \sim p_{noisy}}}{\mathbb{E}} \left[ \rho(f_\theta(y_1) - y_2) + \rho(f_\theta(y_2) - y_1) \right] \\
+    Y^{(j)} = X + B^{(j)}, \quad j = 1, 2
+    \label{eq:additive_noise}
+\end{equation}
+
+Let $\{(Y_i^{(1)}, Y_i^{(2)})\}_{i=1}^N$ be a finite sequence of independant and statistically distributed random variables.
+For $\omega_i \in \Omega$, we denote $Y_i^{(j)}(\omega_i) = y_i^{(j)} = x_i + b_i^{(j)}$ the observed noisy images for $j = 1, 2$ and $i = 1, \dots, N$.
+
+We train a neural network $f_\theta$ with parameters $\theta$ to map the noisy image $y_i^{(1)} = x_i + b_i^{(1)}$ to the other noisy image $y_i^{(2)} = x_i + b_i^{(2)}$ both representing a different corruption of the same underlying clean image $x_i$ and vice versa by minimizing the following loss function :
+
+\begin{equation}
+    \mathcal{L}(\theta) = \frac{1}{2N} \sum_{i=1}^N \left[ \rho(f_\theta(y_i^{(1)}) - y_i^{(2)}) + \rho(f_\theta(y_i^{(2)}) - y_i^{(1)}) \right]
+    \label{eq:n2n_loss}
 \end{equation}
 
 with $\rho$ a loss function such as the Mean Squared Error (MSE), the Mean Absolute Error (MAE) or any other appropriate loss.
 
+\subsubsection{MSE loss case}
+
 \begin{proposition}
     \label{prop:noise2noise_l2}
-    Minimizing the above loss function with $\rho = \| \cdot \|_2^2$ leads to parameters that recover the underlying clean image in expectation under the following conditions :
+    Minimizing \ref{eq:n2n_loss} with $\rho = \| \cdot \|_2^2$ leads to parameters that recover the underlying clean image distribution $p_x$ in expectation under the following conditions :
     \begin{itemize}
-        \item The noise realizations $n_1$ and $n_2$ are independent given the clean image $s$ (i.e. $y_1 | x \independent y_2 | x$).
-        \item The noise has zero mean, ie $\mathbb{E}[n_i] = 0$ for $i = 1, 2$.
+        \item $Y^{(1)}$ and $Y^{(2)}$ are independent given the clean image $X$ (i.e. $Y^{(1)} | X \independent Y^{(2)} | X$).
+        \item The noise has zero mean, ie $\mathbb{E}[B^{(j)}] = 0$ for $j = 1, 2$.
     \end{itemize}
 \end{proposition}
 
+\begin{proof}
+    We expand the Noise2Noise empirical risk as follows :
+    \begin{align*}
+        R_{N,1}^{n2n}(\theta) &= \frac{1}{N} \sum_{i=1}^N \left[ \| f_\theta(Y_i^{(1)}) - (X^{(i)} + B^{(2)}) \|_2^2 \right] \\
+        &= \frac{1}{N} \sum_{i=1}^N \left[ \|( f_\theta(Y_i^{(1)}) - X^{(i)}) - B^{(2)} \|_2^2 \right] \\
+        &= R_{N,1}^{clean}(\theta) + \frac{1}{N} \sum_{i=1}^N \left[ \| B^{(2)} \|_2^2 \right] - \frac{2}{N} \sum_{i=1}^N \left[ (f_\theta(Y_i^{(1)}) - X^{(i)})^T B^{(2)} \right]
+    \end{align*}
+    However, $\frac{2}{N} \sum_{i=1}^N \left[ (f_\theta(Y_i^{(1)}) - X^{(i)})^T B^{(2)} \right] \xrightarrow[N \to \infty]{a.s.} 2 \mathbb{E} \left[ (f_\theta(Y^{(1)}) - X)^T B^{(2)} \right]$ due to the law of large numbers. This expectation vanishes under the independence and zero-mean assumptions on the noise.
+    Thus, we have :
+    \begin{equation*}
+        R_{N,1}^{n2n}(\theta) = R_{N,1}^{clean}(\theta) + \frac{1}{N} \sum_{i=1}^N \left[ \| B^{(2)} \|_2^2 \right] + o(1)
+    \end{equation*}
+    We show a similar result for the second term of the Noise2Noise empirical risk by swapping $Y^{(1)}$ and $Y^{(2)}$ and we get the following result :
+    \begin{equation*}
+        R_{N}^{n2n}(\theta) = 2 R_{N}^{clean}(\theta) + \frac{1}{N} \sum_{i=1}^N \left[ \| B_i^{(1)} \|_2^2 + \| B_i^{(2)} \|_2^2 \right] + o(1)
+    \end{equation*}
+    where we are left with the standard clean denoising empirical risk with its underlying bias and variance decomposition, and an irreductible noise variance term which has no influence as it is independent of $\theta$.
+\end{proof}
+
+\begin{remark}
+    The previous proposition can be extended to other loss functions such as the MAE loss $\rho = \| \cdot \|_1$ under the assumption that the noise distribution is symmetric with respect to zero (i.e. $B^{(j)}$ and $-B^{(j)}$ have the same distribution for $j = 1, 2$).
+    In this case, the network learns to estimate the median of the underlying clean image distribution instead of the mean as in the MSE case.
+\end{remark}
+
+\subsubsection{Poisson negative log-likelihood case}
+\label{sec:noise2noise_poisson}
+
+
+\begin{definition}
+    For two random variables $X: \Omega \to \mathbb{R}^d$ and $Y: \Omega \to \mathbb{R}^d$, we say that $Y \,|\, X \sim \text{Poisson}(X)$ if :
+    \begin{equation*}
+        \forall i = 1 \dots d, \quad \mathbb{P}(Y[i] = k \,|\, X[i] = x[i]) = \frac{(x[i])^k e^{-x[i]}}{k!}, \quad k \in \mathbb{N}
+    \end{equation*}
+\end{definition}
+
+\begin{proposition}
+    Under the assumption $Y \,|\, X \sim \text{Poisson}(X)$, we have :
+    \begin{equation*}
+        \mathbb{E}[Y \,|\, X] = X \text{almost surely}
+    \end{equation*}
+\end{proposition}
 
 \begin{proof}
-    We expand the loss function as follows :
+    By definition of the Poisson distribution, we have :
     \begin{align*}
-        \mathbb{E} \left[ \| f_\theta(y_1) - y_2 \|_2^2 \right] &= \mathbb{E} \left[ \| f_\theta(y_1) - (x + n_2) \|_2^2 \right] \\
-        &= \mathbb{E} \left[ \|( f_\theta(y_1) - x) - n_2 \|_2^2 \right] \\
-        &= \mathbb{E} \left[ \| f_\theta(y_1) - x \|_2^2 \right] + \mathbb{E} \left[ \| n_2 \|_2^2 \right] - 2 \mathbb{E} \left[ (f_\theta(y_1) - x)^T n_2 \right]
+        \mathbb{E}[Y[i] \,|\, X[i] = x[i]] &= \sum_{k=0}^{\infty} k \cdot \mathbb{P}(Y[i] = k \,|\, X[i] = x[i]) \\
+        &= \sum_{k=0}^{\infty} k \cdot \frac{(x[i])^k e^{-x[i]}}{k!} \\
+        &= x[i] \sum_{k=1}^{\infty} \frac{(x[i])^{k-1} e^{-x[i]}}{(k-1)!} \\
+        &= x[i] \cdot 1 = x[i]
     \end{align*}
-    The cross term vanishes due to the independence and zero-mean assumptions on the noise :
-    \begin{align*}
-        \mathbb{E} \left[ (f_\theta(y_i) - x)^T n_j \right] &= \mathbb{E} \left[ (f_\theta(y_i) - x)\right] \mathbb{E}_{n_j} && y_i | x \independent y_j | x\\
-        &= 0  && \text{(zero-mean, $\mathbb{E}[n_j] = 0$)}
-    \end{align*}
-    We can do the same for the second term of the loss by swapping $y_1$ and $y_2$ and we get the following result :
+    Thus, we have $\mathbb{E}[Y \,|\, X] = X$.
+\end{proof}
+
+Now, we consider the case of Poisson noise (i.e. $Y^{(j)} \,|\, X^{(j)} \sim \text{Poisson}(X^{(j)}), \quad j = 1, 2$).
+
+\begin{definition}
+    The Poisson negative log-likelihood loss between two images $y$ and $x$ is defined as follows :
     \begin{equation*}
-        \mathcal{L}(\theta) = 2 \underset{y \sim p_{noisy}}{\mathbb{E}} \left[ \| f_\theta(y) - x \|_2^2 \right] + cste
+        \mathcal{L}_{Poisson}(y, x) = \sum_{i} \left[ y[i] - x[i] \log(y[i]) + \log(x[i]!) \right]
     \end{equation*}
-    where we are left with the standard denoising loss and its underlying bias and variance decomposition, plus a constant noise variance term which has no influence as it is independent of $\theta$.
+\end{definition}
+
+\begin{proof}
+    This loss is derived from the Poisson likelihood function.
+    Given a clean image $x$ and a noisy observation $y$ corrupted by Poisson noise, the likelihood of observing $y$ given $x$ is given by :
+    \begin{equation*}
+        p(y|x) = \prod_{i} \frac{(x[i])^{y[i]} e^{-x[i]}}{y[i]!}
+    \end{equation*}
+    Taking the negative logarithm of this likelihood gives us the Poisson negative log-likelihood loss :
+    \begin{align*}
+        -\ln p(y|x) &= -\sum_{i} \left[ y[i] \ln(x[i]) - x[i] - \ln(y[i]!) \right] \\
+        &= \sum_{i} \left[ x[i] - y[i] \ln(x[i]) + \ln(y[i]!) \right]
+    \end{align*}
 \end{proof}
 
 \begin{proposition}
-    If the noise process is poissonian, ie $y \sim \text{Poisson}(x)$, then training a neural network $f_\theta$ to minimize the loss function defined above with the poisson negative log-likelihood leads to parameters that recover the underlying clean image in expectation under the following condition :
+    \label{prop:noise2noise_poisson}
+    If the noise process is poissonian, minimizing \ref{eq:n2n_loss} with $\rho$ as the Poisson negative log-likelihood leads to parameters that recover the underlying clean image distribution $p_x$ in expectation under the following assumption :
     \begin{itemize}
-        \item The noise realizations $y_1$ and $y_2$ are independent given the clean image $x$ (i.e. $y_1 | x \independent y_2 | x$).
+        \item $Y^{(1)}$ and $Y^{(2)}$ are independent given the clean image $X$ (i.e. $Y^{(1)} | X \independent Y^{(2)} | X$)..
     \end{itemize}
 \end{proposition}
 
 \begin{proof}
-    The poisson negative log-likelihood can be expressed as follows :
+    The poisson negative log-likelihood between $Y_1$ and $Y_2$ can be expressed as follows :
     \begin{equation*}
-        \mathcal{L}_{Poisson}(y_1, y_2) = y_1 - y_2 \log(y_1) + \log(y_2!)
+        \mathcal{L}_{Poisson}(Y_1, Y_2) = Y_1 - Y_2 \log(Y_1) + \log(Y_2!)
     \end{equation*}
-    We expand the loss function with respect to the Noise2Noise framework and the independence assumption :
+    We expand the Noise2Noise Poisson empirical risk as follows :
     \begin{align*}
-        \mathbb{E} \left[ \mathcal{L}_{Poisson}(f_\theta(y_1), y_2) \right] &= \mathbb{E} \left[ f_\theta(y_1) - y_2 \log(f_\theta(y_1)) + \log(y_2!) \right] \\
-        &= \mathbb{E} \left[ f_\theta(y_1) - \mathbb{E}_{y_2} \left[ y_2 | x \right] \log(f_\theta(y_1)) + \mathbb{E}_{y_2} \left[ \log(y_2!) | x \right] \right] \\
-        &= \mathbb{E} \left[ f_\theta(y_1) - x \log(f_\theta(y_1)) + \mathbb{E}_{y_2} \left[ \log(y_2!) | x \right] \right]
+        R_{N,1}^{n2n}(\theta) &= \frac{1}{N} \sum_{i=1}^N \left[ \mathcal{L}_{Poisson}(f_\theta(Y_i^{(1)}), Y_i^{(2)}) \right] \\
+        &= \frac{1}{N} \sum_{i=1}^N \left[ f_\theta(Y_i^{(1)}) - Y_i^{(2)} \log(f_\theta(Y_i^{(1)})) + \log(Y_i^{(2)}!) \right]
     \end{align*}
-    We can do the same for the second term of the loss by swapping $y_1$ and $y_2$ and we get the following result :
+    Yet, $\frac{1}{N} \sum_{i=1}^N Y_i^{(2)} \log(f_\theta(Y_i^{(1)})) \xrightarrow[N \to \infty]{a.s.} \mathbb{E} \left[ Y^{(2)} \log(f_\theta(Y^{(1)})) \right]$ due to the law of large numbers. Under the independence assumption on the noise, this expectation can be rewritten as 
+    \begin{align*}
+        \mathbb{E} \left[ Y^{(2)} | X \right] \mathbb{E} \left[ \log(f_\theta(Y^{(1)})) \right] = X \mathbb{E} \left[ \log(f_\theta(Y^{(1)})) \right]
+    \end{align*}
+    Then, the empirical risk satisfies the following almost sure convergence :
+    \begin{align*}
+        R_{N,1}^{n2n}(\theta) \xrightarrow[N \to \infty]{a.s.} \mathbb{E} \left[ f_\theta(Y^{(1)}) - X \log(f_\theta(Y^{(1)})) + \log(Y^{(2)}!) \right]
+    \end{align*}
+    We can do the same for the second term of the loss by swapping $Y^{(1)}$ and $Y^{(2)}$ and we get the following result :
     \begin{equation*}
-        \mathcal{L}(\theta) = 2 \underset{y \sim Poisson(x)}{\mathbb{E}} \left[ f_\theta(y) - x \log(f_\theta(y)) \right] + cste
+        R_{N}^{n2n}(\theta) \xrightarrow[N \to \infty]{a.s.} 2 \mathbb{E} \left[ f_\theta(Y) - X \log(f_\theta(Y)) + \log(Y!)\right]
     \end{equation*}
-    which is the standard clean poisson negative-log likelihood loss plus a constant term independent of $\theta$.
+    where we are left with the standard clean poisson negative-log likelihood risk plus a constant term independent of $\theta$.
 \end{proof}
 
 In summary, having independant realizations is crucial for this framework to work.
