@@ -295,7 +295,18 @@ The previous propositions give theoretical guarantees that the method will recov
 \end{figure}
 
 
+\paragraph{Noise2NoiseFlow}
 
+\authoryearcite{maleky_noise2noiseflow_2022} propose a framework at the crossroad between density estimation and the Noise2Noise framework. Density estimation is performed using Noise Flow \cite{abdelhamed_noise_2019}, a normalizing flow model designed to learn complex noise distributions from data.
+Notice that the density is closely related to the score.
+Whereas classical score matching methods require model trained in a supervised manner with clean data or denoising auto-encoders trained in an unsupervised manner to estimate the score function, they propose to directly learn the score function from noisy data only using the Noise2Noise principle.
+Both the denoising model and the normalizing flow are trained jointly using pairs of noisy images under the following loss function :
 
+\begin{equation}
+    \mathcal{L}(\theta, \phi) =  \underset{\substack{y_1, y_2 \sim p_{noisy}}}{\mathbb{E}} \left[ - \log p_{N_\phi}(y_1 | f_\theta(y_2)) - \log p_{N_\phi}(y_2 | f_\theta(y_1)) \right] + \lambda \mathcal{L}_{n2n}(\theta)
+\end{equation}
 
+with $p_{N_\phi}$ being the noise distribution modeled by the normalizing flow with parameters $\phi$, $f_\theta$ the denoising model with parameters $\theta$ and $\mathcal{L}_{n2n}(\theta)$ the standard Noise2Noise loss. The authors of Noise2NoiseFlow show that this additional term gives more stability to the training process and leads to better denoising results.
+
+Note that this framework is useless if we already know the natural noise distribution in the data as we could directly use it to denoise images using bayesian methods.
 

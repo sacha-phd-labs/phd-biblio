@@ -234,3 +234,38 @@ Conclusions: The proposed Noise2Noise reconstruction method can achieve promisin
 	pages = {1096--1103},
 	file = {PDF:/home/sacha.bouchez-delotte/snap/zotero-snap/common/Zotero/storage/HB6Y8BAN/Vincent et al. - 2008 - Extracting and composing robust features with denoising autoencoders.pdf:application/pdf},
 }
+
+
+@misc{maleky_noise2noiseflow_2022,
+	title = {{Noise2NoiseFlow}: {Realistic} {Camera} {Noise} {Modeling} without {Clean} {Images}},
+	shorttitle = {{Noise2NoiseFlow}},
+	url = {http://arxiv.org/abs/2206.01103},
+	doi = {10.48550/arXiv.2206.01103},
+	abstract = {Image noise modeling is a long-standing problem with many applications in computer vision. Early attempts that propose simple models, such as signal-independent additive white Gaussian noise or the heteroscedastic Gaussian noise model (a.k.a., camera noise level function) are not sufficient to learn the complex behavior of the camera sensor noise. Recently, more complex learning-based models have been proposed that yield better results in noise synthesis and downstream tasks, such as denoising. However, their dependence on supervised data (i.e., paired clean images) is a limiting factor given the challenges in producing ground-truth images. This paper proposes a framework for training a noise model and a denoiser simultaneously while relying only on pairs of noisy images rather than noisy/clean paired image data. We apply this framework to the training of the Noise Flow architecture. The noise synthesis and density estimation results show that our framework outperforms previous signal-processing-based noise models and is on par with its supervised counterpart. The trained denoiser is also shown to significantly improve upon both supervised and weakly supervised baseline denoising approaches. The results indicate that the joint training of a denoiser and a noise model yields significant improvements in the denoiser.},
+	urldate = {2025-12-05},
+	publisher = {arXiv},
+	author = {Maleky, Ali and Kousha, Shayan and Brown, Michael S. and Brubaker, Marcus A.},
+	month = jun,
+	year = {2022},
+	note = {arXiv:2206.01103 [eess]},
+	keywords = {Computer Science - Computer Vision and Pattern Recognition, Electrical Engineering and Systems Science - Image and Video Processing},
+	annote = {Comment: CVPR 2022},
+	file = {Preprint PDF:/home/sacha.bouchez-delotte/snap/zotero-snap/common/Zotero/storage/5XIBULFE/Maleky et al. - 2022 - Noise2NoiseFlow Realistic Camera Noise Modeling without Clean Images.pdf:application/pdf;Snapshot:/home/sacha.bouchez-delotte/snap/zotero-snap/common/Zotero/storage/8TUN4CQC/2206.html:text/html},
+}
+
+
+@misc{abdelhamed_noise_2019,
+	title = {Noise {Flow}: {Noise} {Modeling} with {Conditional} {Normalizing} {Flows}},
+	shorttitle = {Noise {Flow}},
+	url = {http://arxiv.org/abs/1908.08453},
+	doi = {10.48550/arXiv.1908.08453},
+	abstract = {Modeling and synthesizing image noise is an important aspect in many computer vision applications. The long-standing additive white Gaussian and heteroscedastic (signal-dependent) noise models widely used in the literature provide only a coarse approximation of real sensor noise. This paper introduces Noise Flow, a powerful and accurate noise model based on recent normalizing flow architectures. Noise Flow combines well-established basic parametric noise models (e.g., signal-dependent noise) with the flexibility and expressiveness of normalizing flow networks. The result is a single, comprehensive, compact noise model containing fewer than 2500 parameters yet able to represent multiple cameras and gain factors. Noise Flow dramatically outperforms existing noise models, with 0.42 nats/pixel improvement over the camera-calibrated noise level functions, which translates to 52\% improvement in the likelihood of sampled noise. Noise Flow represents the first serious attempt to go beyond simple parametric models to one that leverages the power of deep learning and data-driven noise distributions.},
+	urldate = {2025-12-05},
+	publisher = {arXiv},
+	author = {Abdelhamed, Abdelrahman and Brubaker, Marcus A. and Brown, Michael S.},
+	month = aug,
+	year = {2019},
+	note = {arXiv:1908.08453 [cs]},
+	keywords = {Computer Science - Computer Vision and Pattern Recognition, Computer Science - Machine Learning, Electrical Engineering and Systems Science - Image and Video Processing},
+	file = {Preprint PDF:/home/sacha.bouchez-delotte/snap/zotero-snap/common/Zotero/storage/EU94EW5R/Abdelhamed et al. - 2019 - Noise Flow Noise Modeling with Conditional Normalizing Flows.pdf:application/pdf;Snapshot:/home/sacha.bouchez-delotte/snap/zotero-snap/common/Zotero/storage/FEUZ43KN/1908.html:text/html},
+}
