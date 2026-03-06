@@ -30,7 +30,10 @@ jobs:
         git config --global user.name "github-actions"
         git config --global user.email "github-actions@github.com"
 
-        git checkout --orphan pdf
-        git add main.pdf
-        git commit -m "Update PDF"
+        git switch --orphan pdf
+
+        git rm -rf . || true
+
+        git add -f main.pdf
+        git commit -m "Update compiled PDF"
         git push origin pdf --force
