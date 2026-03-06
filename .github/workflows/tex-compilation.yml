@@ -7,7 +7,7 @@ on:
       - "main.pdf"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build_tex_phd_bibliography:
