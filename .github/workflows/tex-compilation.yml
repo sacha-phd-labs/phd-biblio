@@ -1,0 +1,43 @@
+name: PhD Bibliography TeX compilation
+
+on:
+  push:
+    branches: [ "main" ]
+    paths-ignore:
+      - "main.pdf"
+
+permissions:
+  contents: read
+
+jobs:
+  test_pet_simulation:
+
+    runs-on:
+      - self-hosted
+      - Linux
+      - X64
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Build TeX
+      run: |
+        docker run --rm -v $PWD:/workspace texlive/texlive sh -c \
+        "pdflatex -interaction=nonstopmode -synctex=1 main.tex && biber main && pdflatex -interaction=nonstopmode -synctex=1 main.tex && pdflatex -interaction=nonstopmode -synctex=1 main.tex"
+
+    - name: Clean up and stop container
+      if: always()
+      run: |
+        docker exec runner-simulation bash -c "rm -rf -- * .[^.] .??*" && \
+        docker stop runner-simulation && \
+        docker rm runner-simulation
+
+    - name: Commit output PDF
+      run: |
+        git config --global user.name "github-actions"
+        git config --global user.email "github-actions@github.com"
+
+        git checkout --orphan pdf
+        git add main.pdf
+        git commit -m "Update PDF"
+        git push origin pdf --force
