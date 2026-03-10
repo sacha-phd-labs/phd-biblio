@@ -29,7 +29,18 @@
 \usetikzlibrary {bending,positioning}
 
 % Bibliography setup
-\usepackage[backend=biber,style=ieee,uniquename=init]{biblatex}
+\usepackage[backend=biber,style=authoryear,maxnames=1]{biblatex}
+
+\DeclareCiteCommand{\cite}
+  {\usebibmacro{prenote}}
+  {\printtext[bibhyperref]{%
+     [\printnames{labelname}~\printfield{year}]}}
+  {\multicitedelim}
+  {\usebibmacro{postnote}}
+
+\DeclareDelimFormat{multicitedelim}{\addcomma\space}
+
+\addbibresource{reference/PET.bib}
 \addbibresource{reference/PnP.bib} % name of your .bib file (explicit path so biber finds it when building from workspace root)
 \addbibresource{reference/optimisation.bib}
 \addbibresource{reference/Self-supervised.bib}
@@ -38,14 +49,6 @@
 \usepackage{indentfirst}
 \usepackage[a4paper, total={6in, 8in}]{geometry}
 
-% Define custom cite command
-\DeclareCiteCommand{\authoryearcite}
-  {\usebibmacro{prenote}}
-  {
-   \printtext[bibhyperref]{\printnames{labelname}}\space(%
-   \printfield{year})}
-  {\multicitedelim}
-  {\usebibmacro{postnote}}
 
 
 \title{PhD Bibliography : Optimization of learning-based methods without ground truth and applicability to positron emision tomography}
