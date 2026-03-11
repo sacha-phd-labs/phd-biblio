@@ -403,6 +403,77 @@ Thus, we can rewrite the supervised loss of the aggregated output as follows :
     \label{eq:consensus_loss}
 \end{equation}
 
+\subsubsection{Bootstrapping noisy measurements}
+
+In this paragraph, we discuss how to generate two independant measurements to apply Noise2Noise on from a single measurement.
+
+\begin{definition}{Infinitely divisible distribution}
+    Let $Y$ be a random variable. $Y$ is said to be $n$-divisible if there exists a sequence of $n$ i.i.d. random variables $\{Y_i\}_{i=1}^n$ such that $Y \stackrel{d}{=} \sum_{i=1}^n Y_i$. If $Y$ is $n$-divisible for all $n \in \mathbb{N}$, then $Y$ is said to be infinitely divisible.
+\end{definition}
+
+If the noise model is well-known and satisfies the infinite divisibility property, we can use this property to generate pairs of noisy images from a single noisy image by splitting the noise into two independent parts.
+
+\begin{proposition}
+    The Poisson distribution is infinitely divisible ; in particular, it is $2$-divisible. Thus, if $Y \sim \text{Poisson}(\lambda)$, then there exists two i.i.d. random variables $Y_1$ and $Y_2$ such that $Y = Y_1 + Y_2$ and $Y_1, Y_2 \sim \text{Poisson}(\lambda/2)$.
+\end{proposition}
+
+\begin{proof}
+    This proof will focus on the case of $2$-divisibility, but it can be easily extended to the general case of $n$-divisibility.
+    Let $Y$ be a random variable following a Poisson distribution with parameter $\lambda$, and let $Y_1 | Y=y \sim \text{Binomial}(y, 1/2)$ be a random variable following a binomial distribution with parameters $y$ and $1/2$ conditionally on $Y=y$. We define $Y_2 = Y - Y_1$. We have the following result for the distribution of $Y_1$ :
+    \begin{align*}
+        \mathbb{P}(Y_1 = k) &= \sum_{y=k}^{\infty} \mathbb{P}(Y_1 = k | Y = y) \mathbb{P}(Y = y) \\
+        &= \sum_{y=k}^{\infty} \binom{y}{k} \left( \frac{1}{2} \right)^y \frac{\lambda^y e^{-\lambda}}{y!} \\
+        &= \sum_{y=k}^{\infty} \frac{y!}{k!(y-k)!} \left( \frac{1}{2} \right)^y \frac{\lambda^y e^{-\lambda}}{y!} \\
+        &= \frac{1}{k!} \left( \frac{\lambda}{2} \right)^k e^{-\lambda/2} \sum_{y=k}^{\infty} \frac{(\lambda/2)^{y-k} e^{-\lambda/2}}{(y-k)!} \\
+        &= \frac{1}{k!} \left( \frac{\lambda}{2} \right)^k e^{-\lambda/2}
+    \end{align*}
+    Thus, $Y_1$ follows a Poisson distribution with parameter $\lambda/2$. By symmetry, $Y_2$ also follows a Poisson distribution with parameter $\lambda/2$. Moreover, we have $Y = Y_1 + Y_2$ by definition.
+
+    Finally, we show that $Y_1$ and $Y_2$ are independent. We have :
+    \begin{align*}
+        \mathbb{P}(Y_1 = k, Y_2 = l) &= \mathbb{P}(Y_1 = k, Y_2 = l | Y = k + l) \mathbb{P}(Y = k + l) \\
+        &= \binom{k+l}{k} \left( \frac{1}{2} \right)^{k+l} \frac{\lambda^{k+l} e^{-\lambda}}{(k+l)!} \\
+        &= \frac{1}{k!} \left( \frac{\lambda}{2} \right)^k e^{-\lambda/2} \cdot \frac{1}{l!} \left( \frac{\lambda}{2} \right)^l e^{-\lambda/2} \\
+        &= \mathbb{P}(Y_1 = k) \mathbb{P}(Y_2 = l)
+    \end{align*}
+\end{proof}
+
+The previous proposition shows that it is possible to perform binomial thinnning on Poisson data in order to generate independant pairs of noisy images.
+However, subsampled images expectation is not the same as the original image expectation, as well as noise variance, which means that the signal to noise ratio is higher in the subsampled images than in the original image.
+
+In the context of a known noise model, the Noise2Noise principle can be extended to approaches like \textbf{Noisier2Noise} \cite{moran_noisier2noise_2019} where we can add extra noise to a single noisy image to create a pair of noisy images with a lower noise level in the target image.
+Another approach, coined \textbf{Recorrupted2Recorrupted} aims to provide a way to simulate noisy image pairs satisfying statistical conditions from single measurements.
+This can be particularly usefull in the case of medical imaging where we often have only one noisy image per patient and where the noise model is well-known.
+
+\cite{gr2r} go beyond the additive gaussian noise model and propose a generic formulation for any posterior distribution $p(Y|X)$ that belongs to the exponential family of distributions.
+In particular, we are interested in the case of Poisson noise which is very common in nuclear imaging.
+We introduce $\gamma$ and $\alpha$ which respectively control the noise model scale factor and the balance between the two measurements $Y_1$ and $Y_2$ :
+
+
+\begin{equation*}
+    \begin{cases}
+        Y = \gamma Z \\
+        Z | X =x \sim \text{Poisson}(\frac{x}{\gamma}) \\
+        W | Z = z \sim \text{Binomial}(z, \alpha) \\
+        Y_1 = \frac{Y - \gamma W}{1 - \alpha} \\
+        Y_2 = \frac{1}{\alpha} Y - \frac{1 - \alpha}{\alpha} Y_1
+    \end{cases}
+\end{equation*}
+
+\begin{proposition}
+    The measurements admits decomposition $Y = (1 - \alpha) Y_1 + \alpha Y_2$ and satisfy the following properties :
+    \begin{itemize}
+        \item $Y_1$ and $Y_2$ are independent given the clean image $X$.
+        \item $\mathbb{E}[Y_1 | X=x] = \mathbb{E}[Y_2 | X=x] = \mathbb{E}[Y | X=x] = x$.
+        \item $\mathbb{V}[Y_1 | X=x] = \frac{1}{1 - \alpha} \mathbb{V}[Y | X=x] = \frac{1}{1 - \alpha} x$.
+        \item $\mathbb{V}[Y_2 | X=x] = \frac{1}{\alpha} \mathbb{V}[Y | X=x] = \frac{1}{\alpha} x$.
+    \end{itemize}
+\end{proposition}
+
+\cite{gr2r} propose a generic proof for the previous proposition when the noise distribution is any member of the exponential family of distributions, which includes the Poisson distribution as a special case.
+
+\subsubsection{Other Noise2Noise-based frameworks}
+
 \paragraph{Noise2NoiseFlow}
 
 \cite{maleky_noise2noiseflow_2022} propose a framework at the crossroad between density estimation and the Noise2Noise framework. Density estimation is performed using Noise Flow \cite{abdelhamed_noise_2019}, a normalizing flow model designed to learn complex noise distributions from data.
