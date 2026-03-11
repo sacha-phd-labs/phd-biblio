@@ -1,72 +1,57 @@
 \section{Linear inverse problems}
 
-In the following section, we're having a look at linear inverse problems. These problems aim to recover a true signal $x \in \mathbb{R}^n$, transformed by a direct forward operation
-$\mathcal{A}$, given a measurement $y \in \mathbb{R}^d$:
+The main focus of this section is to present mathematical inverse problems, which are problems where we aim to recover an underlying signal from indirect and noisy measurements. These problems are common in various fields such as image reconstruction, signal processing, and machine learning.
+We limit ourselves to linear inverse problems in finite dimensions. This allows us to derive theoretical results and develop efficient algorithms for solving these problems.
 
+
+Let $(\Omega, \mathcal{F}, \mathbb{P})$ be a probability space and $X: \Omega \to \mathbb{R}^n$ a random variable representing the true signal. We assume that we have access to measurements $Y: \Omega \to \mathbb{R}^d$ that are related to the true signal through a linear operator $A: \mathbb{R}^n \to \mathbb{R}^d$ and corrupted by a noise process $\mathcal{C}$. The measurement model can be written as:
 \begin{equation}
-    y = \mathcal{A}x
+    Y | X=x \sim \mathcal{C}(Ax)
+    \label{eq:inverse-problem}
 \end{equation}
 
-An inverse problem is assumed to be well-posed if it satisfies the following three properties.
+In most setups, we work in high dimensions and the forward operator $A$ is not directly invertible, which makes the problem of recovering $X$ from $Y$ an ill-posed inverse problem.
+
+\begin{definition}
+    $A$ is said to be ill-posed if one of the following properties is not satisfied :
 \begin{enumerate}
-    \item Existence. $\forall y, \exists x$ such as $y = \mathcal{A}x$.
-    \item Uniquenness. $\forall y, \exists! x$, such as $y = \mathcal{A}x$.
-    \item Stability. $\mathcal{A}^{-1}$ is continuous.
+    \item $A$ is injective, i.e. $\forall x_1, x_2 \in \mathbb{R}^n, Ax_1 = Ax_2 \implies x_1 = x_2$.
+    \item $A$ is surjective, i.e. $\forall y \in \mathbb{R}^d, \exists x \in \mathbb{R}^n$ such as $y = Ax$.
+    \item $A^{-1}$ is continuous, i.e. $\forall \epsilon > 0, \exists \delta > 0$ such as $\| y_1 - y_2 \| < \delta \implies \| A^{-1}y_1 - A^{-1}y_2 \| < \epsilon$.
 \end{enumerate}
+\end{definition}
 
-In our situation, the inverse problem is ill-posed, meaning that the one of the above properties is not satisfied.
-To tackle this issue, one may consider regularizing the problem by adding prior knowledge on the solution.
-In the context of image reconstruction, the forward operator $\mathcal{A}$ is often linear, and the measurements are corrupted by noise.
-The linear inverse problem can then be written as:
+\begin{remark}
+    Note that in finite dimention, linear bijections are always continuous and thus the third condition is automatically satisfied.
+\end{remark}
 
-\begin{equation}
-    y = Ax + b
-    \label{eq:inverse_problem}
-\end{equation}
-
-with $A \in \mathbb{R}^{d \times n}$ the linear forward operator and $b \in \mathbb{R}^d$ the noise with prior distribution $p_{b}$.
-
-
-
-
-
-
-
-
-
-
-
-
-
+If $A$ is ill-posed, then it is obviously not a bijection and its null-space is not reduced to $\{0\}$.
+This means that there exist many solutions to the inverse problem for a given measurement, eventhough we're looking for a unique solution.
+In order to solve this issue, one may consider regularizing the problem by adding prior knowledge on the solution. The goal of this prior is to eliminate the spurious solutions and retrieve a signal as close as possible to the true signal.
 
 
 
 \subsection{Generalization of Noise2Noise to linear inverse problems}
 
 \cite{xia_training_nodate} extend the Noise2Noise framework (see section \ref{sec:noise2noise}) to linear inverse problems such as image restoration.
-
-We consider the same setting as in section \ref{sec:noise2noise}, with a probability space $(\Omega, \mathcal{F}, \mathbb{P})$ and random variables $X: \Omega \to \mathbb{R}^m$ (ground truth image) and $Y^{(j)}: \Omega \to \mathbb{R}^d, \quad j = 1, 2$ (degraded observed images).
-Similarly to equation \ref{eq:inverse_problem}, we now consider the following degradation model :
-
-\begin{equation}
-    Y^{(j)} = A^{(j)} X + B^{(j)}, \quad j = 1, 2
-\end{equation}
-
-with $A^{(j)} \in \mathbb{R}^{d \times m}$ two linear operators.
-
+Formalism from section \ref{sec:noise2noise} is still valid and we will use the same notations in the following.
 Let again $\{(Y_i^{(1)}, Y_i^{(2)})\}_{i=1}^N$ be a finite sequence of independant and statistically distributed random variables and $y_i^{(j)} = Y_i^{(j)}(\omega_i) = A_i^{(j)}x_i + b_i^{(j)}$ the observed degraded images for $\omega \in \Omega$, $j = 1, 2$, $i = 1, \dots, N$.
-In the context of non-blind estimation, i.e. when $A^{(j)}$ is known, we can optimize a neural network $f_{\theta}$ under the following objective function :
+We also rewrite \ref{eq:inverse-probelm} as :
+\begin{equation}
+    \begin{cases}
+        Y^{(j)} | X=x \sim \mathcal{C}(A^{(j)}x), \quad j = 1, 2
+        Y^{(j)} = A^{(j)} X + B^{(j)}, \quad j = 1, 2
+    \end{cases}
+\end{equation}
+with $A^{(j)} \in \mathbb{R}^{d \times m}$ two linear operators inheriting from $A$ and defined accordingly to $Y^{(1)}$ and $Y^{(2)}$.
 
+In the context of non-blind estimation, i.e. when $A^{(j)}$ is known, we can optimize a neural network $f_{\theta}$ under the following objective function :
 \begin{equation}
     \mathcal{L}_{swap}(\theta) = \frac{1}{N} \sum_{i=1}^N \left[ \rho(A_i^{(2)} f_{\theta}(y_i^{(1)}) - y_i^{(2)}) + \rho(A_i^{(1)} f_{\theta}(y_i^{(2)}) - y_i^{(1)}) \right]
     \label{eq:xia_swap_loss}
 \end{equation}
 
-% For the sake of simplicity, we will assume that we have $A = A_i^{(1)} = A_i^{(2)} \forall i$ in the following.
-
-
-
-The authors add a second term to the loss function to enforce data consistency with respect to the measurements $y$. They introduce it as a regularization term in the inversion process.
+The authors add a second term to the loss function to enforce data consistency with respect to the measurements $y$.
 
 \begin{equation*}
     \mathcal{L}_{self} = \frac{1}{N} \sum_{i=1}^N \left[ \rho(A_i^{(1)} f_{\theta}(y_i^{(1)}) - y_i^{(1)}) + \rho(A_i^{(2)} f_{\theta}(y_i^{(2)}) - y_i^{(2)}) \right]
@@ -81,12 +66,12 @@ with $\lambda$ a hyperparameter to tune the weight of the data-consistency term.
     Note that choosing $I = A_i^{(1)} = A_i^{(2)} \, \forall i$ is equivalent to the regular Noise2Noise framework.
 \end{remark}
 
-\begin{proposition}
-    Minimizing \ref{eq:xia_swap_loss} with $\rho = \| \cdot \|_2^2$ leads to parameters that retrieve the underlying distribution $p_x$ in expectation if the noise variables $B^{(1)}$ and $B^{(2)}$ are independant and zero-mean.:
-\end{proposition}
+\begin{theorem}
+    Minimizing \ref{eq:n2n_loss} with $\rho(x, y) = \| x - y \|_2^2$ gives the same estimator as minimizing the homologous supervised loss as $N \to \infty$ under Noise2Noise statistical conditions.
+\end{theorem}
 
 \begin{proof}
-    Proof in proposition \ref{prop:noise2noise_l2} is still valid as long as we replace $f_{\theta}(Y^{(j)})$ by $Af_{\theta}(Y^{(j)})$. We thus have :
+    Proof in theorem \ref{th:noise2noise_l2} is still valid as long as we replace $f_{\theta}(Y^{(j)})$ by $Af_{\theta}(Y^{(j)})$. We thus have :
     \begin{align*}
         R_{N}^{n2n}(\theta) &= \frac{1}{N} \sum_{i=1}^N \left[ \| A_i^{(2)} f_{\theta}(Y_i^{(1)}) - Y_i^{(2)} \|_2^2 + \| A_i^{(1)} f_{\theta}(Y_i^{(2)}) - Y_i^{(1)} \|_2^2 \right] \\
         &= 2 R_{N}^{clean}(\theta) + \frac{1}{N} \sum_{i=1}^N \left[ \| B_i^{(1)} \|_2^2 + \| B_i^{(2)} \|_2^2 \right] + o(1)
@@ -101,12 +86,12 @@ With the conventions of section \ref{sec:noise2noise_poisson}, we now consider t
     Y^{(j)} \sim Poisson(A^{(j)} X), \quad j = 1, 2
 \end{equation}
 
-\begin{proposition}
-    If the noise process is poissonian, minimizing \ref{eq:xia_swap_loss} with $\rho$ as the Poisson negative log-likelihood leads to parameters that recover the underlying image distribution $p_x$ in expectation if $Y^{(1)} | X$ and $Y^{(2)} | X$ are independent.
-\end{proposition}
+\begin{theorem}
+    If $Y | X=x \sim \text{Poisson}(Ax)$, then minimizing \ref{eq:n2n_loss} with $\rho = \mathcal{L}_{Poisson}$ gives the same estimator as minimizing the homologous supervised loss as $N \to \infty$ under Noise2Noise statistical conditions.
+\end{theorem}
 
 \begin{proof}
-    Proof in proposition \ref{prop:noise2noise_poisson} is still valid as long as we replace $f_{\theta}(Y^{(j)})$ by $A f_{\theta}(Y^{(j)})$. If we define the empirical risk as :
+    Proof in theorem \ref{th:noise2noise_poisson} is still valid as long as we replace $f_{\theta}(Y^{(j)})$ by $A f_{\theta}(Y^{(j)})$. If we define the empirical risk as :
     \begin{equation*}
         R_{N}^{n2n}(\theta) = \frac{1}{N} \sum_{i=1}^N \left[ \mathcal{L}_{Poisson}(A_i^{(2)} f_{\theta}(Y_i^{(1)}), Y_i^{(2)}) + \mathcal{L}_{Poisson}(A_i^{(1)} f_{\theta}(Y_i^{(2)}), Y_i^{(1)}) \right]
     \end{equation*}
